@@ -103,8 +103,6 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   console.error("❌ FULL ERROR:");
   console.error(err);
 
-  return res.status(500).send(
-    err?.message || err.toString()
-  );
+  return res.status(500).send(err?.message || err.toString());
 }
 });
