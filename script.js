@@ -81,10 +81,13 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     alert("Hotovo: " + text);
   }
 
-  } catch (err) {
-    console.error("FETCH ERROR:", err);
-    alert("Nepodařilo se spojit se serverem");
-  }
+  catch (err) {
+  console.error("❌ FULL ERROR:", err);
+
+  return res.status(500).send(
+    err?.message || err.toString()
+  );
+}
 
   if (passed) {
     resultDiv.innerHTML += "<br>✅ Passed";
