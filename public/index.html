@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>BOZP Školení</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>BOZP Školení</h1>
+
+<!-- PowerPoint Embed -->
+<embed src="/src/prezentace.pdf" width="100%" height="800px" />
+
+<h2>Test</h2>
+
+<form id="testForm">
+
+  <input type="text" id="name" placeholder="Full Name" required>
+  <input type="email" id="email" placeholder="Email" required>
+  <input type="text" id="company" placeholder="Společnost" required>
+  <input type="text" id="workId" placeholder="Work ID">
+
+   <label class="gdpr">
+      <input type="checkbox" id="gdpr" required>
+      Souhlasím se zpracováním osobních údajů (GDPR)
+    </label>
+
+    <div id="questions"></div>
+
+    <button type="submit">Odeslat test</button>
+  </form>
+
+  <div id="result"></div>
+</section>
+
+<footer>
+  © 2026 POHAS s.r.o.
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
