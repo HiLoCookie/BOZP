@@ -47,35 +47,126 @@ app.post("/submit", async (req, res) => {
 
   // 🎨 HTML CERTIFIKÁT
   const html = `
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <style>
-      body { font-family: Arial; padding: 40px; }
-      .box { border: 10px solid #1e3a8a; padding: 40px; text-align: center; }
-      h1 { color: #1e3a8a; }
-      .name { font-size: 32px; font-weight: bold; margin: 20px 0; }
-      .info { margin-top: 30px; font-size: 14px; }
-    </style>
-  </head>
-  <body>
-    <div class="box">
-      <h1>BOZP CERTIFIKÁT</h1>
-      <p>Potvrzujeme, že</p>
-      <div class="name">${name}</div>
-      <p>úspěšně absolvoval/a školení BOZP</p>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page {
+    size: A4;
+    margin: 0;
+  }
 
-      <div class="info">
-        <p>Firma: ${company}</p>
-        <p>Skóre: ${score}/6</p>
-        <p>ID: ${workId}</p>
-        <p>Datum: ${today.toLocaleDateString("cs-CZ")}</p>
-        <p>Platnost do: ${expiry.toLocaleDateString("cs-CZ")}</p>
-      </div>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: white;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 25mm;
+    box-sizing: border-box;
+    position: relative;
+    border: 12px solid #b30000; /* BOZP červená */
+  }
+
+  .title {
+    text-align: center;
+    font-size: 34px;
+    font-weight: bold;
+    color: #b30000;
+    letter-spacing: 2px;
+    margin-top: 20mm;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+  }
+
+  .name {
+    text-align: center;
+    font-size: 38px;
+    font-weight: bold;
+    margin-top: 25px;
+    text-decoration: underline;
+  }
+
+  .info {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .footer-note {
+    position: absolute;
+    bottom: 40mm;
+    left: 25mm;
+    right: 25mm;
+    text-align: center;
+    font-size: 13px;
+    color: #333;
+  }
+
+  .date-left {
+    position: absolute;
+    bottom: 20mm;
+    left: 25mm;
+    font-size: 12px;
+  }
+
+  .date-right {
+    position: absolute;
+    bottom: 20mm;
+    right: 25mm;
+    font-size: 12px;
+    text-align: right;
+  }
+
+</style>
+</head>
+
+<body>
+  <div class="page">
+
+    <div class="title">BOZP CERTIFIKÁT</div>
+
+    <div class="subtitle">Potvrzujeme, že</div>
+
+    <div class="name">${name}</div>
+
+    <div class="subtitle">
+      úspěšně absolvoval/a vstupní školení a test BOZP
     </div>
-  </body>
-  </html>
-  `;
+
+    <div class="info">
+      Firma: ${company}<br>
+      Skóre: ${score}/6<br>
+      ID testu: ${workId}
+    </div>
+
+    <div class="date-left">
+      📅 Datum absolvování:<br>
+      <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+    <div class="date-right">
+      ⏳ Platnost do:<br>
+      <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+    <div class="footer-note">
+      Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.
+    </div>
+
+  </div>
+</body>
+</html>
+`;
 
   let browser;
 
