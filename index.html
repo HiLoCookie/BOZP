@@ -14,12 +14,27 @@
 
 <h2>Test</h2>
 
-<form id="testForm">
+<form id="testForm" class="form">
 
-  <input type="text" id="name" placeholder="Full Name" required>
-  <input type="email" id="email" placeholder="Email" required>
-  <input type="text" id="company" placeholder="Společnost" required>
-  <input type="text" id="workId" placeholder="Work ID">
+  <div class="form-group">
+    <label for="name">Full Name</label>
+    <input type="text" id="name" required>
+  </div>
+
+  <div class="form-group">
+    <label for="email">Email</label>
+    <input type="email" id="email" required>
+  </div>
+
+  <div class="form-group">
+    <label for="company">Společnost</label>
+    <input type="text" id="company" required>
+  </div>
+
+  <div class="form-group">
+    <label for="workId">Work ID</label>
+    <input type="text" id="workId" required>
+  </div>
 
    <label class="gdpr">
       <input type="checkbox" id="gdpr" required>
