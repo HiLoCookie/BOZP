@@ -31,18 +31,10 @@ app.get("/", (req, res) => {
 });
 
 // 📩 SUBMIT
-app.post("/submit", async (req, res) => {
-  const { name, email, workId, company, score, passed } = req.body;
-
-  console.log("📩 request received");
-
-  if (!passed) {
-    return res.send("Test neprošel");
-  }
-
-  const today = new Date();
-  const expiry = new Date();
-  expiry.setFullYear(today.getFullYear() + 2);
+app.post("/submit", (req, res) => {
+  console.log(req.body);
+  return res.send("BACKEND OK");
+});
 
   // 🎨 HTML CERTIFIKÁT
   const html = `
