@@ -1,3 +1,4 @@
+app.use(express.static("public"));
 const express = require("express");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
