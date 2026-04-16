@@ -100,7 +100,11 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     }
 
   } catch (err) {
-    console.error("❌ FETCH ERROR:", err);
-    alert("❌ Nepodařilo se spojit se serverem.");
-  }
+  console.error("❌ FULL ERROR:");
+  console.error(err);
+
+  return res.status(500).send(
+    err?.message || err.toString()
+  );
+}
 });
