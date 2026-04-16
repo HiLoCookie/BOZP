@@ -2,19 +2,22 @@
   "name": "pohas",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "script.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^147.0.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "nodemailer": "^8.0.5",
-    "puppeteer": "^24.41.0"
+    "pdfkit": "^0.18.0",
+    "puppeteer": "^24.41.0",
+    "puppeteer-core": "^24.41.0"
   }
 }
