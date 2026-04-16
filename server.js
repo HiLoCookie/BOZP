@@ -2,12 +2,17 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
+
 app.use(express.json());
 app.use(cors());
 
-// 📧 EMAIL (Gmail + App Password)
+// 📂 statické soubory (HTML, CSS, JS)
+app.use(express.static(__dirname));
+
+// 📧 EMAIL (použij ENV proměnné!)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -17,28 +22,16 @@ const transporter = nodemailer.createTransport({
 });
 
 // 🧪 TEST SERVERU
-app.get("/", (req, res) => {
+app.get("/api/test", (req, res) => {
   res.send("Server běží ✅");
 });
 
-// 📩 TEST EMAIL
-app.get("/test-email", async (req, res) => {
-  try {
-    await transporter.sendMail({
-      from: "BOZP systém <eliska.vyskocilova.sos@gmail.com>",
-      to: "eliska.vyskocilova.sos@gmail.com",
-      subject: "Test email",
-      text: "Email funguje správně 👍"
-    });
-
-    res.send("Email odeslán ✅");
-  } catch (err) {
-    console.error(err);
-    res.send("Chyba při odesílání ❌");
-  }
+// 🏠 HLAVNÍ STRÁNKA (index.html)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 🏆 GENEROVÁNÍ CERTIFIKÁTU
+// 📩 ODESLÁNÍ TESTU + CERTIFIKÁT
 app.post("/submit", async (req, res) => {
   const { name, email, workId, company, score, passed } = req.body;
 
@@ -52,7 +45,7 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
-  // 🎨 HTML šablona certifikátu
+  // 🎨 HTML certifikátu
   const html = `
   <html>
   <head>
@@ -61,7 +54,6 @@ app.post("/submit", async (req, res) => {
         font-family: Arial, sans-serif;
         background: #f3f4f6;
         margin: 0;
-        padding: 0;
       }
 
       .container {
@@ -81,7 +73,6 @@ app.post("/submit", async (req, res) => {
         font-weight: bold;
         color: #1e3a8a;
         margin-bottom: 40px;
-        letter-spacing: 2px;
       }
 
       .sub {
@@ -154,7 +145,6 @@ app.post("/submit", async (req, res) => {
   `;
 
   try {
-    // 🚀 Spuštění Puppeteer
     const browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
@@ -163,7 +153,6 @@ app.post("/submit", async (req, res) => {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // 📄 PDF jako buffer
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true
@@ -171,12 +160,10 @@ app.post("/submit", async (req, res) => {
 
     await browser.close();
 
-    // 📧 Odeslání emailu
     await transporter.sendMail({
-      from: "BOZP systém <eliska.vyskocilova.sos@gmail.com>",
+      from: `BOZP systém <${process.env.EMAIL_USER}>`,
       to: [
-        "eliska.vyskocilova.sos@gmail.com",
-        "underanarchys@gmail.com",
+        process.env.EMAIL_USER,
         email
       ],
       subject: "BOZP certifikát – úspěšné absolvování",
@@ -189,18 +176,20 @@ app.post("/submit", async (req, res) => {
       ]
     });
 
-    console.log("✅ Email s certifikátem odeslán");
-    res.send("Hotovo");
-
-    req.body = null;
+    res.send("Hotovo ✅");
 
   } catch (err) {
     console.error("❌ Chyba:", err);
     res.status(500).send("Chyba serveru");
   }
+
+  // 🧹 cleanup
+  req.body = null;
 });
 
-// 🚀 START SERVERU
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+// 🚀 START
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
