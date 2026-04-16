@@ -148,20 +148,34 @@ app.post("/submit", async (req, res) => {
     // 🚀 Puppeteer (Render safe config)
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process"
+      ]
     });
 
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+  const page = await browser.newPage();
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true
-    });
+  // 👇 důležité pro stabilitu
+  await page.setViewport({ width: 1280, height: 800 });
 
-    await browser.close();
+  await page.setContent(html, {
+    waitUntil: "domcontentloaded"
+  });
 
-    // 📧 EMAIL
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true
+  });
+
+  await browser.close();
+    
+      // 📧 EMAIL
     await transporter.sendMail({
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
       to: [process.env.EMAIL_USER, email],
