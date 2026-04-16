@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
@@ -6,13 +8,12 @@ const path = require("path");
 
 const app = express();
 
+// middleware
 app.use(express.json());
 app.use(cors());
-
-// 📂 statické soubory (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
-// 📧 EMAIL (použij ENV proměnné!)
+// 📧 EMAIL (ENV)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -21,17 +22,17 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// 🧪 TEST SERVERU
+// 🧪 API TEST
 app.get("/api/test", (req, res) => {
   res.send("Server běží ✅");
 });
 
-// 🏠 HLAVNÍ STRÁNKA (index.html)
+// 🏠 FRONTEND
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 📩 ODESLÁNÍ TESTU + CERTIFIKÁT
+// 📩 SUBMIT
 app.post("/submit", async (req, res) => {
   const { name, email, workId, company, score, passed } = req.body;
 
@@ -45,10 +46,11 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
-  // 🎨 HTML certifikátu
+  // 🎨 HTML CERTIFIKÁT
   const html = `
   <html>
   <head>
+    <meta charset="UTF-8" />
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -145,8 +147,9 @@ app.post("/submit", async (req, res) => {
   `;
 
   try {
+    // 🚀 Puppeteer (Render safe config)
     const browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
 
@@ -160,12 +163,10 @@ app.post("/submit", async (req, res) => {
 
     await browser.close();
 
+    // 📧 EMAIL
     await transporter.sendMail({
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
-      to: [
-        process.env.EMAIL_USER,
-        email
-      ],
+      to: [process.env.EMAIL_USER, email],
       subject: "BOZP certifikát – úspěšné absolvování",
       text: `${name} (${company}) úspěšně absolvoval test (${score}/6)`,
       attachments: [
@@ -187,9 +188,9 @@ app.post("/submit", async (req, res) => {
   req.body = null;
 });
 
-// 🚀 START
+// 🚀 START (Render používá vlastní PORT)
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server běží na portu ${PORT}`);
 });
