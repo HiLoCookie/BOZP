@@ -58,7 +58,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   const passed = score >= 4;
 
   // Send to backend
-  await fetch("http://localhost:3000/submit", {
+  await fetch("/submit", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
