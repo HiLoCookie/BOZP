@@ -18,8 +18,8 @@
     "pdfkit": "^0.18.0",
     "puppeteer": "^24.41.0"
   }
-}
-"main": "server.js",
-"scripts": {
-  "start": "node server.js"
-}
+  }
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
