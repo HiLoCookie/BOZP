@@ -2,10 +2,10 @@
   "name": "pohas",
   "version": "1.0.0",
   "description": "",
-  "main": "script.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -15,11 +15,6 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "nodemailer": "^8.0.5",
-    "pdfkit": "^0.18.0",
     "puppeteer": "^24.41.0"
   }
-  }
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  }
+}
