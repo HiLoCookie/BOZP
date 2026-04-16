@@ -58,18 +58,33 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   const passed = score >= 4;
 
   // Send to backend
-  await fetch("/submit", {
+  try {
+  const res = await fetch("/submit", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-        name: document.getElementById("name").value,
-        email: document.getElementById("email").value,
-        workId: document.getElementById("workId").value,
-        company: document.getElementById("company").value,
-        score,
-        passed
+      name: document.getElementById("name").value,
+      email: document.getElementById("email").value,
+      workId: document.getElementById("workId").value,
+      company: document.getElementById("company").value,
+      score,
+      passed
     })
   });
+
+  const text = await res.text();
+  console.log("SERVER RESPONSE:", text);
+
+  if (!res.ok) {
+    alert("Chyba serveru: " + text);
+  } else {
+    alert("Hotovo: " + text);
+  }
+
+  } catch (err) {
+    console.error("FETCH ERROR:", err);
+    alert("Nepodařilo se spojit se serverem");
+  }
 
   if (passed) {
     resultDiv.innerHTML += "<br>✅ Passed";
