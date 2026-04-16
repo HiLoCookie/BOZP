@@ -11,8 +11,8 @@ app.use(cors());
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "eliska.vyskocilova.sos@gmail.com",
-    pass: "hiclgxuycpadvkdc"
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
@@ -42,7 +42,7 @@ app.get("/test-email", async (req, res) => {
 app.post("/submit", async (req, res) => {
   const { name, email, workId, company, score, passed } = req.body;
 
-  console.log("📩 Data:", req.body);
+  console.log("📩 request received");
 
   if (!passed) {
     return res.send("Test neprošel");
@@ -191,6 +191,8 @@ app.post("/submit", async (req, res) => {
 
     console.log("✅ Email s certifikátem odeslán");
     res.send("Hotovo");
+
+    req.body = null;
 
   } catch (err) {
     console.error("❌ Chyba:", err);
