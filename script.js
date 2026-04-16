@@ -1,3 +1,4 @@
+
 const questions = [
   {
     q: "Který úraz NENÍ považován za pracovní úraz?",
@@ -33,12 +34,19 @@ const questions = [
 
 const container = document.getElementById("questions");
 
+// render otázek
 questions.forEach((q, i) => {
   const div = document.createElement("div");
-  div.innerHTML = `<p>${q.q}</p>` +
+
+  div.innerHTML =
+    `<p>${q.q}</p>` +
     q.options.map((opt, j) =>
-      `<label><input type="radio" name="q${i}" value="${j}" required> ${opt}</label><br>`
+      `<label>
+        <input type="radio" name="q${i}" value="${j}" required>
+        ${opt}
+      </label><br>`
     ).join("");
+
   container.appendChild(div);
 });
 
@@ -47,51 +55,52 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
 
   let score = 0;
 
+  // výpočet skóre (SAFE)
   questions.forEach((q, i) => {
-    const answer = document.querySelector(`input[name="q${i}"]:checked`).value;
-    if (parseInt(answer) === q.answer) score++;
-  });
+    const checked = document.querySelector(`input[name="q${i}"]:checked`);
 
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = `Score: ${score}/6`;
+    if (checked && parseInt(checked.value) === q.answer) {
+      score++;
+    }
+  });
 
   const passed = score >= 4;
 
-  // Send to backend
-  try {
-  const res = await fetch("/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: document.getElementById("name").value,
-      email: document.getElementById("email").value,
-      workId: document.getElementById("workId").value,
-      company: document.getElementById("company").value,
-      score,
-      passed
-    })
-  });
-
-  const text = await res.text();
-  console.log("SERVER RESPONSE:", text);
-
-  if (!res.ok) {
-    alert("Chyba serveru: " + text);
-  } else {
-    alert("Hotovo: " + text);
-  }
-
-  catch (err) {
-  console.error("❌ FULL ERROR:", err);
-
-  return res.status(500).send(
-    err?.message || err.toString()
-  );
-}
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = `Score: ${score}/6`;
 
   if (passed) {
     resultDiv.innerHTML += "<br>✅ Passed";
   } else {
     resultDiv.innerHTML += "<br>❌ Failed";
+  }
+
+  // 📡 SEND TO BACKEND
+  try {
+    const res = await fetch("/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        workId: document.getElementById("workId").value,
+        company: document.getElementById("company").value,
+        score,
+        passed
+      })
+    });
+
+    const text = await res.text();
+    console.log("SERVER RESPONSE:", text);
+
+    if (!res.ok) {
+      alert("❌ Chyba serveru: " + text);
+    } else {
+      alert("✅ Hotovo: " + text);
+    }
+
+  } catch (err) {
+    console.error("❌ FETCH ERROR:", err);
+    alert("❌ Nepodařilo se spojit se serverem.");
   }
 });
