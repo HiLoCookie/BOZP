@@ -77,7 +77,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   const passed = score >= 6;
 
   const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = `Score: ${score}/6`;
+  resultDiv.innerHTML = `Score: ${score}/8`;
 
   if (passed) {
     resultDiv.innerHTML += "<br>✅ Úspěšné splnění testu";
