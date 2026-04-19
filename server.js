@@ -8,6 +8,12 @@ const chromium = require("@sparticuz/chromium");
 
 const app = express();
 
+const companyEmails = {
+  "SOUD": process.env.COMPANY_SOUD,
+//  "ABC": process.env.COMPANY_ABC,
+//  "XYZ": process.env.COMPANY_XYZ
+};
+
 app.use(express.json());
 app.use(cors());
 app.use(express.static(__dirname));
@@ -195,19 +201,19 @@ app.post("/submit", async (req, res) => {
     await transporter.sendMail({
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
       to: [
-          process.env.EMAIL_USER,   // tvůj
-          email,                    // zaměstnanec
-          process.env.TARGET_COMPANY_EMAIL // firma
-          ],
-      subject: "BOZP certifikát",
-      text: `${name} úspěšně absolvoval BOZP test (${score}/8)`,
+        process.env.EMAIL_USER, // ty
+        email,                  // zaměstnanec
+        companyEmail            // správná firma podle výběru
+      ],
+      subject: "BOZP a PO certifikát",
+      text: `${name} úspěšně absolvoval BOZP a PO test (${score}/8)`,
       attachments: [
         {
           filename: "certifikat.pdf",
           content: pdfBuffer
         }
       ]
-    });
+  });
 
     res.send("Hotovo ✅ certifikát odeslán - zkontrolujte is svou složku SPAM!");
 
