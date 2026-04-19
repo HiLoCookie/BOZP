@@ -196,7 +196,7 @@ app.post("/submit", async (req, res) => {
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
       to: [process.env.EMAIL_USER, email],
       subject: "BOZP certifikát",
-      text: `${name} úspěšně absolvoval BOZP test (${score}/6)`,
+      text: `${name} úspěšně absolvoval BOZP test (${score}/8)`,
       attachments: [
         {
           filename: "certifikat.pdf",
@@ -205,7 +205,7 @@ app.post("/submit", async (req, res) => {
       ]
     });
 
-    res.send("Hotovo ✅ certifikát odeslán");
+    res.send("Hotovo ✅ certifikát odeslán - zkontrolujte is svou složku SPAM!");
 
   } catch (err) {
     console.error("❌ ERROR:", err);
