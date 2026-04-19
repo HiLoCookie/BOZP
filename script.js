@@ -93,7 +93,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({
         name: document.getElementById("name").value,
         email: document.getElementById("email").value,
-        company: document.getElementById("company").value
+        company: document.getElementById("company").value,
         score,
         passed
       })
@@ -108,10 +108,8 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
       alert("✅ Hotovo: " + text);
     }
 
-  } catch (err) {
-  console.error("❌ FULL ERROR:");
-  console.error(err);
-
-  return res.status(500).send(err?.message || err.toString());
-}
+    } catch (err) {
+        console.error("❌ FETCH ERROR:", err);
+        alert("Nepodařilo se odeslat formulář");
+    }
 });
