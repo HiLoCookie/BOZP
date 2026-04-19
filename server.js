@@ -133,7 +133,7 @@ app.post("/submit", async (req, res) => {
 <body>
   <div class="page">
 
-    <div class="title">BOZP CERTIFIKÁT</div>
+    <div class="title">CERTIFIKÁT BOZP a PO</div>
 
     <div class="subtitle">Potvrzujeme, že</div>
 
