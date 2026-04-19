@@ -93,6 +93,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({
         name: document.getElementById("name").value,
         email: document.getElementById("email").value,
+        company: document.getElementById("company").value
         score,
         passed
       })
