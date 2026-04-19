@@ -1,34 +1,44 @@
 
 const questions = [
   {
-    q: "Který úraz NENÍ považován za pracovní úraz?",
-    options: ["Úraz při výkonu práce", "Úraz při pracovní cestě", "Úraz při školení organizovaném zaměstnavatelem", "Úraz na cestě do práce"],
-    answer: 3
-  },
-  {
-    q: "Které z následujících patří mezi „5 bezpečnostních tabu“?",
-    options: ["Používání ochranných pomůcek", "Oznámení pracovního úrazu", "Nepoužívání OOPP", "Dodržování pracovních postupů"],
+    q: "Mezi důležitá telefonní čísla pro případ nouze nepatří:",
+    options: ["112", "150, 155 a 158", "0609 123 456"],
     answer: 2
   },
   {
-    q: "Jak má zaměstnanec postupovat při úrazu elektrickým proudem?",
-    options: ["Okamžitě se dotknout postiženého a odtáhnout ho", "Nejprve přerušit přívod elektrického proudu", "Začít resuscitaci bez ohledu na situaci", "Čekat na odbornou pomoc bez zásahu"],
+    q: "V objektu je nutno z pohledu požární ochrany:",
+    options: ["skladovat co nejvíc papíru, palet a dalšího hořlavého materiálu", "udržovat volné únikové cesty a přístup k prostředkům požární ochrany", "větrat po dobu polední pauzy na půdě"],
     answer: 1
   },
   {
-    q: "Které tvrzení o práci ve výškách je správné?",
-    options: ["Za práci ve výškách se považuje práce nad 0,5 m", "Zaměstnanec nemusí být speciálně školen", "Zaměstnanec musí být zajištěn proti pádu v každém okamžiku", "Práce bez jištění je povolena při krátkodobé činnosti"],
+    q: "Kouřit na pracovišti se:",
+    options: ["může kdekoliv a kdykoliv", "nesmí, výjimkou je šatna a jídelna", "může pouze ve vyhrazených prostorách", "může kdekoliv, pouze se souhlasem nadřízeného"],
     answer: 2
   },
   {
-    q: "Co znamená zkratka BOZP?",
-    options: ["Bezpečnost organizace základních procesů", "Bezpečnost a ochrana zdraví při práci", "Bezpečnost osob a zaměstnanců", "Bezpečnostní opatření zaměstnavatele"],
+    q: "Každý zaměstnanec je povinen:",
+    options: ["dbát o své zdraví a bezpečnost práce na svém pracovišti", "ve svém volnu odpočívat", "informovat nadřízeného o vztazích na pracovišti"],
+    answer: 0
+  },
+  {
+    q: "Zaměstnavatel je povinen:",
+    options: ["přidělovat zaměstnancům osobní ochranné pracovní pomůcky", "zpříjemnit zaměstnanců pracovní prostředí květinami", "sdružovat kolektiv pomocí večírků"],
+    answer: 0
+  },
+  {
+    q: "Zajišťování bezpečnosti a ochrany zdraví při práci:",
+    options: ["záleží na finančních prostředcích zaměstnavatele", "je základní povinností zaměstnavatele", "je dáno počtem zaměstnanců na pracovišti"],
     answer: 1
   },
   {
-    q: "Co je zaměstnanec povinen udělat v případě zjištění nebezpečné situace na pracovišti?",
-    options: ["Ignorovat ji, pokud se ho netýká", "Okamžitě ji odstranit bez ohledu na své kompetence", "Oznámit ji svému nadřízenému", "Počkat, až ji nahlásí někdo jiný"],
-    answer: 2
+    q: "Požívání alkoholických nápojů a toxických látek je na pracovišti a v pracovní době:",
+    options: ["přísně zakázáno", "povoleno", "povoleno pouze za přítomnosti vedoucího zaměstnance a pouze víno"],
+    answer: 0
+  },
+  {
+    q: "Mezi životní funkce patří:",
+    options: ["sluch, zrak a čich", "srdeční funkce, dýchání a krevní oběh", "správná životospráva, jídlo a pití"],
+    answer: 1
   }
 ];
 
@@ -64,15 +74,15 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     }
   });
 
-  const passed = score >= 4;
+  const passed = score >= 6;
 
   const resultDiv = document.getElementById("result");
   resultDiv.innerHTML = `Score: ${score}/6`;
 
   if (passed) {
-    resultDiv.innerHTML += "<br>✅ Passed";
+    resultDiv.innerHTML += "<br>✅ Úspěšné splnění testu";
   } else {
-    resultDiv.innerHTML += "<br>❌ Failed";
+    resultDiv.innerHTML += "<br>❌ Neúspěšné splnění testu";
   }
 
   // 📡 SEND TO BACKEND
