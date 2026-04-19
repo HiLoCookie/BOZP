@@ -194,7 +194,11 @@ app.post("/submit", async (req, res) => {
     // 📧 EMAIL SEND
     await transporter.sendMail({
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
-      to: [process.env.EMAIL_USER, email],
+      to: [
+          process.env.EMAIL_USER,   // tvůj
+          email,                    // zaměstnanec
+          process.env.TARGET_COMPANY_EMAIL // firma
+          ],
       subject: "BOZP certifikát",
       text: `${name} úspěšně absolvoval BOZP test (${score}/8)`,
       attachments: [
