@@ -150,12 +150,12 @@ app.post("/submit", async (req, res) => {
     </div>
 
     <div class="date-left">
-      📅 Datum absolvování:<br>
+      Datum absolvování:<br>
       <strong>${today.toLocaleDateString("cs-CZ")}</strong>
     </div>
 
     <div class="date-right">
-      ⏳ Platnost do:<br>
+      Platnost do:<br>
       <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
     </div>
 
