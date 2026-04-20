@@ -4,6 +4,9 @@ const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
 
+const session = require("express-session");
+const bcrypt = require("bcrypt");
+
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
@@ -13,9 +16,22 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(__dirname));
 
-/* 🔐 MAPA FIREM (ENV) */
-const companyEmails = {
-  "Okresní soud v Teplicích": process.env.COMPANY_SOUD
+/* 🔐 SESSION */
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false }
+}));
+
+/* 👤 USERS (FIRMY) */
+const users = {
+  soud: {
+    username: process.env.COMPANY_SOUD_USERNAME,
+    passwordHash: process.env.COMPANY_SOUD_HASH,
+    companyName: "Okresní soud v Teplicích",
+    companyEmail: process.env.COMPANY_SOUD_EMAIL
+  }
 };
 
 /* 📧 EMAIL */
@@ -37,18 +53,45 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-/* 📩 SUBMIT */
-app.post("/submit", async (req, res) => {
-  const { name, email, company, companyDisplay, score, passed } = req.body;
+/* 🔐 LOGIN */
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = Object.values(users).find(
+    u => u.username === username
+  );
+
+  if (!user) return res.status(401).send("Špatné přihlášení");
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+
+  if (!ok) return res.status(401).send("Špatné přihlášení");
+
+  req.session.user = { username };
+
+  res.send("OK");
+});
+
+/* 🔒 AUTH MIDDLEWARE */
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).send("Nepřihlášen");
+  }
+  next();
+}
+
+/* 📩 SUBMIT (CHRÁNĚNÝ) */
+app.post("/submit", requireAuth, async (req, res) => {
+  const { name, email, score, passed } = req.body;
+
+  const user = Object.values(users).find(
+    u => u.username === req.session.user.username
+  );
+
+  const companyDisplay = user.companyName;
+  const companyEmail = user.companyEmail;
 
   console.log("📩 DATA:", req.body);
-
-  const companyEmail = companyEmails[company];
-
-  if (!companyEmail) {
-    console.warn("❌ Neznámá firma:", company);
-    return res.status(400).send("Neplatná společnost");
-  }
 
   if (!passed) {
     return res.send("Test neprošel ❌");
@@ -58,15 +101,14 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
-  /* 🖼️ LOGO → BASE64 (ZE /src/logo.png) */
+  /* 🖼️ LOGO */
   const logoPath = path.join(__dirname, "src", "logo.png");
 
   let logoBase64 = "";
-
   try {
     logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
   } catch (err) {
-    console.error("❌ Logo se nepodařilo načíst:", err);
+    console.error("❌ Logo error:", err);
   }
 
   /* 🎨 HTML CERTIFIKÁT */
@@ -77,10 +119,7 @@ app.post("/submit", async (req, res) => {
   <style>
     @page { size: A4; margin: 0; }
 
-    body {
-      margin: 0;
-      font-family: Arial;
-    }
+    body { margin: 0; font-family: Arial; }
 
     .page {
       width: 210mm;
@@ -97,12 +136,6 @@ app.post("/submit", async (req, res) => {
       font-weight: bold;
       color: #b30000;
       margin-top: 20mm;
-    }
-
-    .subtitle {
-      text-align: center;
-      font-size: 18px;
-      margin-top: 20px;
     }
 
     .name {
@@ -137,13 +170,6 @@ app.post("/submit", async (req, res) => {
       right: 25mm;
       text-align: center;
       font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .cert-info {
-      margin-top: 10px;
-      font-size: 11px;
-      color: #444;
     }
 
     .date-left {
@@ -160,7 +186,6 @@ app.post("/submit", async (req, res) => {
       font-size: 12px;
       text-align: right;
     }
-
   </style>
   </head>
 
@@ -169,48 +194,29 @@ app.post("/submit", async (req, res) => {
 
       <div class="title">CERTIFIKÁT BOZP a PO</div>
 
-      <div class="subtitle">Potvrzujeme, že</div>
-
       <div class="name">${name}</div>
 
-      <div class="subtitle">
-        úspěšně absolvoval/a školení a test BOZP a PO
-      </div>
-
       <div class="info">
-        Firma: ${companyDisplay || company}<br>
+        Firma: ${companyDisplay}<br>
         Skóre: ${score}/8
       </div>
 
-      <!-- LOGO -->
-      ${
-        logoBase64
-          ? `<div class="logo">
-               <img src="data:image/png;base64,${logoBase64}" />
-             </div>`
-          : ""
-      }
+      <div class="logo">
+        <img src="data:image/png;base64,${logoBase64}" />
+      </div>
 
-      <!-- TEXT -->
       <div class="footer">
-        Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.
-
-        <div class="cert-info">
-          <br>
-          PO – Osvědčení o odborné způsobilosti dle § 11 zák. ČNR č. 133/1985 Sb., pod číslem Š-221/95
-          <br><br>
-          BOZP – evidenční číslo ověření ROVS/1834/PREV/2023
-        </div>
+        Školení provedeno společností POHAS s.r.o.<br><br>
+        PO – Š-221/95<br>
+        BOZP – ROVS/1834/PREV/2023
       </div>
 
       <div class="date-left">
-        Datum absolvování: 
-        <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+        ${today.toLocaleDateString("cs-CZ")}
       </div>
 
       <div class="date-right">
-        Platnost do: 
-        <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+        Platnost do: ${expiry.toLocaleDateString("cs-CZ")}
       </div>
 
     </div>
@@ -221,7 +227,6 @@ app.post("/submit", async (req, res) => {
   let browser;
 
   try {
-    /* 🚀 PUPPETEER */
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
@@ -249,8 +254,8 @@ app.post("/submit", async (req, res) => {
         email,
         companyEmail
       ],
-      subject: "BOZP a PO certifikát",
-      text: `${name} úspěšně absolvoval test (${score}/8)`,
+      subject: "BOZP certifikát",
+      text: `${name} (${companyDisplay})`,
       attachments: [
         {
           filename: "certifikat.pdf",
@@ -259,15 +264,13 @@ app.post("/submit", async (req, res) => {
       ]
     });
 
-    res.send("Hotovo ✅ certifikát odeslán");
+    res.send("Hotovo ✅");
 
   } catch (err) {
-    console.error("❌ ERROR:", err);
-    res.status(500).send(err.message || "Chyba serveru");
+    console.error(err);
+    res.status(500).send("Chyba serveru");
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
+    if (browser) await browser.close().catch(() => {});
   }
 });
 
