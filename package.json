@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "@sparticuz/chromium": "^147.0.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
@@ -22,4 +23,3 @@
     "puppeteer-core": "^24.41.0"
   }
 }
-
