@@ -28,20 +28,13 @@ app.use(session({
   }
 }));
 
-/* ❗ STATIC (bez index auto-loadu) */
+/* STATIC FILES (bez auto indexu) */
 app.use(express.static(__dirname, {
   index: false
 }));
 
 /* ---------------- USERS (FIRMY) ---------------- */
 const users = {
-//  admin: [
-//    username: process.env.ADMIN_USERNAME,
-//    passwordHash: process.env.ADMIN_HASH,
-//    companyName: "ADMIN",
-//    companyEmail: process.env.ADMIN_EMAIL
-//  },
-  
   soud: {
     username: process.env.COMPANY_SOUD_USERNAME,
     passwordHash: process.env.COMPANY_SOUD_HASH,
@@ -59,7 +52,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ---------------- AUTH MIDDLEWARE ---------------- */
+/* ---------------- ROOT ROUTE ---------------- */
+app.get("/", (req, res) => {
+  if (!req.session.user) {
+    return res.sendFile(path.join(__dirname, "login.html"));
+  }
+  return res.redirect("/index.html");
+});
+
+/* ---------------- PROTECTED INDEX ---------------- */
 function requireAuth(req, res, next) {
   if (!req.session.user) {
     return res.redirect("/login.html");
@@ -67,14 +68,6 @@ function requireAuth(req, res, next) {
   next();
 }
 
-/* ---------------- ROUTES ---------------- */
-
-/* TEST SERVER */
-app.get("/api/test", (req, res) => {
-  res.send("Server běží ✅");
-});
-
-/* LOGIN PAGE PROTECTION (optional) */
 app.get("/index.html", requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
@@ -97,9 +90,7 @@ app.post("/login", async (req, res) => {
     return res.status(401).send("Špatné přihlášení");
   }
 
-  req.session.user = {
-    username
-  };
+  req.session.user = { username };
 
   res.send("OK");
 });
@@ -114,8 +105,6 @@ app.post("/submit", requireAuth, async (req, res) => {
 
   const companyName = user.companyName;
   const companyEmail = user.companyEmail;
-
-  console.log("📩 DATA:", req.body);
 
   if (!passed) {
     return res.send("Test neprošel ❌");
