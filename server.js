@@ -166,6 +166,19 @@ app.post("/submit", async (req, res) => {
       text-decoration: underline;
     }
 
+    .logo-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.08; /* aby nerušilo text */
+      z-index: 0;
+    }
+
+    .logo-center img {
+      width: 250px;
+    }
+
     .info {
       text-align: center;
       margin-top: 20px;
@@ -206,13 +219,9 @@ app.post("/submit", async (req, res) => {
         Skóre: ${score}
       </div>
 
-      ${
-        logoBase64
-          ? `<div style="text-align:center; margin-top:10mm;">
-               <img src="data:image/png;base64,${logoBase64}" style="width:120px;" />
-             </div>`
-          : ""
-      }
+      <div class="logo-center">
+        <img src="data:image/png;base64,${logoBase64}" />
+      </div>
 
       <div class="footer">
           Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.<br><br>
@@ -223,11 +232,11 @@ app.post("/submit", async (req, res) => {
       </div>
 
       <div class="date-left">
-        ${today.toLocaleDateString("cs-CZ")}
+        Datum absolvování: ${today.toLocaleDateString("cs-CZ")}
       </div>
 
       <div class="date-right">
-        Platnost: ${expiry.toLocaleDateString("cs-CZ")}
+        Expirace školení: ${expiry.toLocaleDateString("cs-CZ")}
       </div>
 
     </div>
