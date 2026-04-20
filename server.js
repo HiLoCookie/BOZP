@@ -52,7 +52,7 @@ const users = {
   ostatni: {
     username: process.env.COMPANY_OSTATNI_USERNAME,
     password: process.env.COMPANY_OSTATNI_PASS,
-    companyName: "Ostatní",
+    companyName: "Ostatni",
     companyEmail: process.env.COMPANY_OSTATNI_EMAIL
   }
 };
