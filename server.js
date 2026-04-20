@@ -13,23 +13,25 @@ const app = express();
 
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json());
+
 app.use(cors({
   origin: true,
   credentials: true
 }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || "secret123",
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }
+  cookie: {
+    secure: false, // Render HTTP/HTTPS kompatibilita
+    sameSite: "lax"
+  }
 }));
 
-app.use(express.static(__dirname, {
-  index: false
-}));
+app.use(express.static(__dirname));
 
-/* ---------------- FIRMY ---------------- */
+/* ---------------- USERS ---------------- */
 const users = {
   soud: {
     username: process.env.COMPANY_SOUD_USERNAME,
@@ -48,7 +50,9 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ---------------- ROOT ---------------- */
+/* ---------------- ROUTES ---------------- */
+
+// login page
 app.get("/", (req, res) => {
   if (!req.session.user) {
     return res.sendFile(path.join(__dirname, "login.html"));
@@ -56,21 +60,18 @@ app.get("/", (req, res) => {
   res.redirect("/index.html");
 });
 
-/* ---------------- AUTH ---------------- */
-function requireAuth(req, res, next) {
+// protect main app
+app.get("/index.html", (req, res) => {
   if (!req.session.user) {
-    return res.redirect("/login.html");
+    return res.redirect("/");
   }
-  next();
-}
-
-app.get("/index.html", requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
 /* ---------------- LOGIN ---------------- */
 app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+  const username = req.body.username?.trim();
+  const password = req.body.password?.trim();
 
   const user = Object.values(users).find(
     u => u.username === username && u.password === password
@@ -80,21 +81,30 @@ app.post("/login", (req, res) => {
     return res.status(401).send("Špatné přihlášení");
   }
 
-  req.session.user = { username };
+  req.session.user = {
+    username
+  };
 
   res.send("OK");
 });
 
 /* ---------------- SUBMIT ---------------- */
-app.post("/submit", requireAuth, async (req, res) => {
-  const { name, email, score, passed } = req.body;
+app.post("/submit", async (req, res) => {
+  console.log("📩 SUBMIT HIT", req.body);
+
+  if (!req.session.user) {
+    return res.status(401).send("Not logged in");
+  }
+
+  const { name, email, company, score, passed } = req.body;
 
   const user = Object.values(users).find(
     u => u.username === req.session.user.username
   );
 
-  const companyName = user.companyName;
-  const companyEmail = user.companyEmail;
+  if (!user) {
+    return res.status(400).send("User not found");
+  }
 
   if (!passed) {
     return res.send("Test neprošel ❌");
@@ -108,7 +118,7 @@ app.post("/submit", requireAuth, async (req, res) => {
   const html = `
   <html>
   <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <style>
     @page { size: A4; margin: 0; }
 
@@ -119,15 +129,15 @@ app.post("/submit", requireAuth, async (req, res) => {
       height: 297mm;
       padding: 25mm;
       box-sizing: border-box;
-      position: relative;
       border: 12px solid #b30000;
+      position: relative;
     }
 
     .title {
       text-align: center;
       font-size: 34px;
-      font-weight: bold;
       color: #b30000;
+      font-weight: bold;
       margin-top: 20mm;
     }
 
@@ -142,7 +152,6 @@ app.post("/submit", requireAuth, async (req, res) => {
     .info {
       text-align: center;
       margin-top: 20px;
-      font-size: 14px;
     }
 
     .footer {
@@ -158,14 +167,12 @@ app.post("/submit", requireAuth, async (req, res) => {
       position: absolute;
       bottom: 20mm;
       left: 25mm;
-      font-size: 12px;
     }
 
     .date-right {
       position: absolute;
       bottom: 20mm;
       right: 25mm;
-      font-size: 12px;
     }
   </style>
   </head>
@@ -178,14 +185,12 @@ app.post("/submit", requireAuth, async (req, res) => {
       <div class="name">${name}</div>
 
       <div class="info">
-        Firma: ${companyName}<br>
-        Skóre: ${score}/8
+        Firma: ${company}<br>
+        Skóre: ${score}
       </div>
 
       <div class="footer">
-        Školení provedeno společností POHAS s.r.o.<br>
-        PO – Š-221/95<br>
-        BOZP – ROVS/1834/PREV/2023
+        POHAS s.r.o. – školení BOZP a PO
       </div>
 
       <div class="date-left">
@@ -193,7 +198,7 @@ app.post("/submit", requireAuth, async (req, res) => {
       </div>
 
       <div class="date-right">
-        Platnost do: ${expiry.toLocaleDateString("cs-CZ")}
+        Platnost: ${expiry.toLocaleDateString("cs-CZ")}
       </div>
 
     </div>
@@ -204,8 +209,13 @@ app.post("/submit", requireAuth, async (req, res) => {
   let browser;
 
   try {
+    /* ---------------- PUPPETEER ---------------- */
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+      ],
       executablePath: await chromium.executablePath(),
       headless: chromium.headless
     });
@@ -223,32 +233,37 @@ app.post("/submit", requireAuth, async (req, res) => {
 
     await browser.close();
 
-    await transporter.sendMail({
-      from: `BOZP systém <${process.env.EMAIL_USER}>`,
-      to: [
-        process.env.EMAIL_USER,
-        email,
-        companyEmail
-      ],
-      subject: "BOZP certifikát",
-      text: `${name} (${companyName})`,
-      attachments: [
-        {
-          filename: "certifikat.pdf",
-          content: pdfBuffer
-        }
-      ]
-    });
+    /* ---------------- EMAIL ---------------- */
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: [
+          process.env.EMAIL_USER,
+          email,
+          user.companyEmail
+        ],
+        subject: "BOZP certifikát",
+        text: `${name} úspěšně absolvoval test`,
+        attachments: [
+          {
+            filename: "certifikat.pdf",
+            content: pdfBuffer
+          }
+        ]
+      });
 
-    res.send("Hotovo ✅");
+      console.log("📧 Email odeslán");
+    } catch (mailErr) {
+      console.error("❌ Email error:", mailErr);
+    }
+
+    res.send("OK CERT GENERATED");
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Chyba serveru");
+    console.error("❌ SERVER ERROR:", err);
+    res.status(500).send(err.message || "Server error");
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
+    if (browser) await browser.close().catch(() => {});
   }
 });
 
@@ -256,5 +271,5 @@ app.post("/submit", requireAuth, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server běží na portu " + PORT);
+  console.log("Server running on " + PORT);
 });
