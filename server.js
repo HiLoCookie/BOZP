@@ -156,119 +156,140 @@ app.post("/submit", async (req, res) => {
 
   /* 📄 CERT HTML */
   const html = `
-  <html>
-  <head>
-  <meta charset="UTF-8"/>
-  <style>
-    @page { size: A4; margin: 0; }
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+  @page { size: A4; margin: 0; }
 
-    body { margin: 0; font-family: Arial; }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
 
-    .page {
-      width: 210mm;
-      height: 297mm;
-      padding: 25mm;
-      box-sizing: border-box;
-      border: 12px solid #b30000;
-      position: relative;
-    }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 25mm;
+    box-sizing: border-box;
+    border: 10px solid #c40000; /* 🔴 červený okraj */
+    position: relative;
+  }
 
-    .title {
-      text-align: center;
-      font-size: 34px;
-      color: #b30000;
-      font-weight: bold;
-      margin-top: 20mm;
-    }
+  .title {
+    text-align: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: #c40000; /* 🔴 červený název */
+    margin-top: 20mm;
+    letter-spacing: 1px;
+  }
 
-    .name {
-      text-align: center;
-      font-size: 38px;
-      font-weight: bold;
-      margin-top: 25px;
-      text-decoration: underline;
-    }
+  .subtitle {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+  }
 
-    .info {
-      text-align: center;
-      margin-top: 20px;
-      z-index: 2;
-      position: relative;
-    }
+  .name {
+    text-align: center;
+    font-size: 42px;
+    font-weight: bold;
+    margin-top: 20px;
+  }
 
-    .logo-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.08;
-      z-index: 0;
-    }
+  .info {
+    text-align: center;
+    font-size: 16px;
+    margin-top: 25px;
+    line-height: 1.6;
+  }
 
-    .logo-center img {
-      width: 260px;
-    }
+  .logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.08;
+  }
 
-    .footer {
-      position: absolute;
-      bottom: 45mm;
-      left: 25mm;
-      right: 25mm;
-      text-align: center;
-      font-size: 12px;
-    }
+  .logo img {
+    width: 260px;
+  }
 
-    .date-left {
-      position: absolute;
-      bottom: 20mm;
-      left: 25mm;
-    }
+  .footer {
+    position: absolute;
+    bottom: 45mm;
+    left: 25mm;
+    right: 25mm;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.6;
+  }
 
-    .date-right {
-      position: absolute;
-      bottom: 20mm;
-      right: 25mm;
-      text-align: right;
-    }
-  </style>
-  </head>
+  .date-left {
+    position: absolute;
+    bottom: 20mm;
+    left: 25mm;
+    font-size: 13px;
+  }
 
-  <body>
-    <div class="page">
+  .date-right {
+    position: absolute;
+    bottom: 20mm;
+    right: 25mm;
+    font-size: 13px;
+    text-align: right;
+  }
 
-      <div class="title">CERTIFIKÁT BOZP a PO</div>
+</style>
+</head>
 
-      <div class="name">${name}</div>
+<body>
+  <div class="page">
 
-      <div class="info">
-        Firma: ${safeCompany}<br>
-        Skóre: ${score}/8
-      </div>
+    <div class="title">CERTIFIKÁT BOZP a PO</div>
 
-      <div class="logo-center">
-        <img src="data:image/png;base64,${logoBase64}" />
-      </div>
+    <div class="subtitle">Potvrzujeme, že</div>
 
-      <div class="footer">
-        Školení a testování byly provedeny společností POHAS s.r.o.<br><br>
+    <div class="name">${name}</div>
 
-        PO – Osvědčení dle §11 zák. č. 133/1985 Sb. — Š-221/95<br>
-        BOZP – evidenční číslo: ROVS/1834/PREV/2023
-      </div>
-
-      <div class="date-left">
-        Datum absolvování: ${today.toLocaleDateString("cs-CZ")}
-      </div>
-
-      <div class="date-right">
-        Platnost do: ${expiry.toLocaleDateString("cs-CZ")}
-      </div>
-
+    <div class="subtitle">
+      úspěšně absolvoval/a školení a test BOZP a PO
     </div>
-  </body>
-  </html>
-  `;
 
+    <div class="info">
+      Firma: <strong>${safeCompany}</strong><br>
+      Skóre: <strong>${score}/8</strong>
+    </div>
+
+    <!-- LOGO -->
+    <div class="logo">
+      <img src="data:image/png;base64,${logoBase64}" />
+    </div>
+
+    <!-- TEXT -->
+    <div class="footer">
+      Školení a testování byly provedeny společností POHAS s.r.o.<br>
+      PO – Osvědčení dle §11 zák. č. 133/1985 Sb. — Š-221/95<br>
+      BOZP – evidenční číslo: ROVS/1834/PREV/2023
+    </div>
+
+    <!-- DATA -->
+    <div class="date-left">
+      Datum absolvování:<br>
+      <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+    <div class="date-right">
+      Platnost do:<br>
+      <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+  </div>
+</body>
+</html>
+`;
   let browser;
 
   try {
