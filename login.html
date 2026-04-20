@@ -1,0 +1,27 @@
+<!-- login.html -->
+<form id="loginForm">
+  <input id="username" placeholder="Uživatelské jméno" required />
+  <input id="password" type="password" placeholder="Heslo" required />
+  <button>Přihlásit</button>
+</form>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const res = await fetch("/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      username: document.getElementById("username").value,
+      password: document.getElementById("password").value
+    })
+  });
+
+  if (res.ok) {
+    window.location.href = "/";
+  } else {
+    alert("Špatné přihlašovací údaje");
+  }
+});
+</script>
