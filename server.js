@@ -215,7 +215,11 @@ app.post("/submit", async (req, res) => {
       }
 
       <div class="footer">
-        POHAS s.r.o. – školení BOZP a PO
+          Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.<br><br>
+
+          <strong>Odborné certifikace školitele:</strong><br>
+          PO – Osvědčení dle §11 zák. č. 133/1985 Sb. — evidenční číslo: Š-221/95<br>
+          BOZP – Ověření odborné způsobilosti: ROVS/1834/PREV/2023
       </div>
 
       <div class="date-left">
