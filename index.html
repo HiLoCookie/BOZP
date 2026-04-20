@@ -2,55 +2,74 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
-  <title>BOZP Školení</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOZP Školení – POHAS s.r.o.</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<h1>BOZP Školení</h1>
+<header class="header">
+  <a href="https://www.pohas.cz/" target="_blank" class="logo-link">
+    <img src="/src/logo.png" alt="POHAS logo" class="logo">
+  </a>
 
-<!-- PowerPoint Embed -->
-<embed src="/src/prezentace.pdf" width="100%" height="800px" />
-
-<h2>Test</h2>
-
-<form id="testForm" class="form">
-
-  <div class="form-group">
-    <label for="name">Full Name</label>
-    <input type="text" id="name" required>
+  <div class="header-text">
+    <h1>BOZP Školení</h1>
+    <p>Online školení bezpečnosti práce</p>
   </div>
+</header>
 
-  <div class="form-group">
-    <label for="email">Email</label>
-    <input type="email" id="email" required>
-  </div>
-  <div>
-    <label>Společnost:</label>
-      <select id="company" required>
+<div class="container">
+
+  <section class="card">
+    <h2>Prezentace</h2>
+
+    <embed src="/src/prezentace.pdf" width="100%" height="600px" />
+  </section>
+
+  <section class="card">
+    <h2>Test znalostí</h2>
+
+    <form id="testForm" class="form">
+
+      <div class="form-group">
+        <label for="name">Jméno a příjmení</label>
+        <input type="text" id="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+
+      <div class="form-group">
+        <label>Společnost</label>
+        <select id="company" required>
           <option value="">-- Vyberte společnost --</option>
-          <option value="Okresní soud v Teplicích">Okresní soud v Teplicích.</option>
-   <!--   <option value="ABC">ABC s.r.o.</option> -->
-    <!--   <option value="XYZ">XYZ a.s.</option> -->
-      </select>
-    </div>
+          <option value="Okresní soud v Teplicích">Okresní soud v Teplicích</option>
+        </select>
+      </div>
 
-    <label class="gdpr">
-      <input type="checkbox" required>
+      <label class="gdpr">
+        <input type="checkbox" required>
         Beru na vědomí zpracování osobních údajů.
         <a href="gdpr.html" target="_blank">Více informací</a>
-    </label>
+      </label>
 
-    <div id="questions"></div>
+      <div id="questions"></div>
 
-    <button type="submit">Odeslat test</button>
-  </form>
+      <button type="submit">Odeslat test</button>
+    </form>
 
-  <div id="result"></div>
-</section>
+    <div id="result"></div>
+  </section>
+
+</div>
 
 <footer>
-  © 2026 POHAS s.r.o.
+  © 2026 
+  <a href="https://www.pohas.cz/" target="_blank">POHAS s.r.o.</a>
 </footer>
 
 <script src="script.js"></script>
