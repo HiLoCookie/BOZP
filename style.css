@@ -33,7 +33,7 @@ body {
 
   padding: 22px 16px;
 
-  background: #1f2937; /* enterprise dark */
+  background: #1f2937;
   color: white;
 
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
@@ -41,7 +41,6 @@ body {
 
 .logo {
   height: 55px;
-  filter: brightness(1.05);
 }
 
 .header-text h1 {
@@ -90,7 +89,7 @@ h2 {
   padding-left: 10px;
 }
 
-/* ================= PDF / EMBED ================= */
+/* ================= PDF ================= */
 embed {
   width: 100%;
   height: 650px;
@@ -107,7 +106,6 @@ embed {
   gap: 14px;
 }
 
-/* FIELD GROUP */
 .form-group {
   width: 100%;
   max-width: 450px;
@@ -123,7 +121,6 @@ embed {
   color: #374151;
 }
 
-/* INPUT + SELECT */
 .form-group input,
 .form-group select {
   padding: 12px 14px;
@@ -147,7 +144,7 @@ embed {
 .gdpr {
   max-width: 450px;
   font-size: 13px;
-  color: var(--muted);
+  color: #6b7280;
 
   display: flex;
   gap: 8px;
@@ -217,6 +214,32 @@ button:active {
   margin-right: auto;
 }
 
+/* ================= QUESTIONS (IMPORTANT FIX) ================= */
+#questions {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* každá otázka */
+#questions > * {
+  padding: 12px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+#questions > *:last-child {
+  border-bottom: none;
+}
+
+/* otázky – zvýraznění */
+#questions label,
+.question {
+  color: var(--primary-dark);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8px;
+}
+
 /* ================= FOOTER ================= */
 footer {
   text-align: center;
@@ -232,12 +255,9 @@ footer a {
   text-decoration: none;
 }
 
-footer a:hover {
-  text-decoration: underline;
-}
-
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
+
   .header {
     flex-direction: column;
     text-align: center;
@@ -254,5 +274,14 @@ footer a:hover {
   button {
     width: 100%;
     min-width: unset;
+  }
+
+  /* 🔥 MOBILE QUESTION SPACING FIX */
+  #questions {
+    gap: 24px;
+  }
+
+  #questions > * {
+    padding: 14px 0;
   }
 }
