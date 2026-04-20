@@ -5,7 +5,6 @@ const path = require("path");
 const fs = require("fs");
 
 const session = require("express-session");
-const bcrypt = require("bcryptjs");
 
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
@@ -23,21 +22,18 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    secure: false
-  }
+  cookie: { secure: false }
 }));
 
-/* STATIC FILES (bez auto indexu) */
 app.use(express.static(__dirname, {
   index: false
 }));
 
-/* ---------------- USERS (FIRMY) ---------------- */
+/* ---------------- FIRMY ---------------- */
 const users = {
   soud: {
     username: process.env.COMPANY_SOUD_USERNAME,
-    passwordHash: process.env.COMPANY_SOUD_HASH,
+    password: process.env.COMPANY_SOUD_PASS,
     companyName: "Okresní soud v Teplicích",
     companyEmail: process.env.COMPANY_SOUD_EMAIL
   }
@@ -52,15 +48,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ---------------- ROOT ROUTE ---------------- */
+/* ---------------- ROOT ---------------- */
 app.get("/", (req, res) => {
   if (!req.session.user) {
     return res.sendFile(path.join(__dirname, "login.html"));
   }
-  return res.redirect("/index.html");
+  res.redirect("/index.html");
 });
 
-/* ---------------- PROTECTED INDEX ---------------- */
+/* ---------------- AUTH ---------------- */
 function requireAuth(req, res, next) {
   if (!req.session.user) {
     return res.redirect("/login.html");
@@ -73,20 +69,14 @@ app.get("/index.html", requireAuth, (req, res) => {
 });
 
 /* ---------------- LOGIN ---------------- */
-app.post("/login", async (req, res) => {
+app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
   const user = Object.values(users).find(
-    u => u.username === username
+    u => u.username === username && u.password === password
   );
 
   if (!user) {
-    return res.status(401).send("Špatné přihlášení");
-  }
-
-  const ok = await bcrypt.compare(password, user.passwordHash);
-
-  if (!ok) {
     return res.status(401).send("Špatné přihlášení");
   }
 
@@ -253,7 +243,7 @@ app.post("/submit", requireAuth, async (req, res) => {
     res.send("Hotovo ✅");
 
   } catch (err) {
-    console.error("ERROR:", err);
+    console.error(err);
     res.status(500).send("Chyba serveru");
   } finally {
     if (browser) {
