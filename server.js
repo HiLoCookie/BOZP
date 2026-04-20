@@ -18,15 +18,16 @@ app.use(cors({
   credentials: true
 }));
 
-/* 🔐 SESSION (LEPŠÍ VARIANTA) */
+app.set("trust proxy", 1);
+
 app.use(session({
   secret: process.env.SESSION_SECRET || "super-secret-change-me",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Render = HTTP/HTTPS mix
-    sameSite: "lax",
-    maxAge: 1000 * 60 * 30 // 🔥 30 minut session timeout
+    secure: true,        // 🔥 důležité pro Render (HTTPS)
+    sameSite: "none",    // 🔥 důležité pro cookies
+    maxAge: 1000 * 60 * 30 // 30 min
   }
 }));
 
@@ -53,7 +54,7 @@ const transporter = nodemailer.createTransport({
 
 /* ---------------- ROUTES ---------------- */
 
-// login page
+// root
 app.get("/", (req, res) => {
   if (!req.session.user) {
     return res.sendFile(path.join(__dirname, "login.html"));
@@ -61,7 +62,7 @@ app.get("/", (req, res) => {
   res.redirect("/index.html");
 });
 
-// login page explicit
+// login page
 app.get("/login.html", (req, res) => {
   if (req.session.user) {
     return res.redirect("/index.html");
@@ -69,12 +70,20 @@ app.get("/login.html", (req, res) => {
   res.sendFile(path.join(__dirname, "login.html"));
 });
 
-// protected app
+// protected page
 app.get("/index.html", (req, res) => {
   if (!req.session.user) {
     return res.redirect("/login.html");
   }
   res.sendFile(path.join(__dirname, "index.html"));
+});
+
+/* ---------------- FORCE LOGOUT ---------------- */
+app.get("/force-logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.redirect("/login.html");
+  });
 });
 
 /* ---------------- LOGIN ---------------- */
@@ -95,14 +104,6 @@ app.post("/login", (req, res) => {
   };
 
   res.send("OK");
-});
-
-/* ---------------- LOGOUT ---------------- */
-app.post("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
-    res.send("logged out");
-  });
 });
 
 /* ---------------- SUBMIT ---------------- */
@@ -136,7 +137,7 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
-  /* ---------------- LOGO ---------------- */
+  /* 🖼️ LOGO */
   const logoPath = path.join(__dirname, "src", "logo.png");
   let logoBase64 = "";
 
@@ -146,9 +147,14 @@ app.post("/submit", async (req, res) => {
     console.error("Logo error:", e);
   }
 
-  const safeCompany = companyDisplay || company || "Neuvedeno";
+  const safeCompany =
+    typeof companyDisplay === "string" && companyDisplay.trim()
+      ? companyDisplay
+      : typeof company === "string" && company.trim()
+        ? company
+        : user.companyName;
 
-  /* ---------------- HTML CERT ---------------- */
+  /* 📄 CERT HTML */
   const html = `
   <html>
   <head>
@@ -183,21 +189,24 @@ app.post("/submit", async (req, res) => {
       text-decoration: underline;
     }
 
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      z-index: 2;
+      position: relative;
+    }
+
     .logo-center {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       opacity: 0.08;
+      z-index: 0;
     }
 
     .logo-center img {
-      width: 250px;
-    }
-
-    .info {
-      text-align: center;
-      margin-top: 20px;
+      width: 260px;
     }
 
     .footer {
@@ -219,6 +228,7 @@ app.post("/submit", async (req, res) => {
       position: absolute;
       bottom: 20mm;
       right: 25mm;
+      text-align: right;
     }
   </style>
   </head>
@@ -232,7 +242,7 @@ app.post("/submit", async (req, res) => {
 
       <div class="info">
         Firma: ${safeCompany}<br>
-        Skóre: ${score}
+        Skóre: ${score}/8
       </div>
 
       <div class="logo-center">
@@ -240,18 +250,18 @@ app.post("/submit", async (req, res) => {
       </div>
 
       <div class="footer">
-        Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.<br><br>
+        Školení a testování byly provedeny společností POHAS s.r.o.<br><br>
 
-        PO – Š-221/95<br>
-        BOZP – ROVS/1834/PREV/2023
+        PO – Osvědčení dle §11 zák. č. 133/1985 Sb. — Š-221/95<br>
+        BOZP – evidenční číslo: ROVS/1834/PREV/2023
       </div>
 
       <div class="date-left">
-        Absolvování testu: ${today.toLocaleDateString("cs-CZ")}
+        Datum absolvování: ${today.toLocaleDateString("cs-CZ")}
       </div>
 
       <div class="date-right">
-        Expirace testu: ${expiry.toLocaleDateString("cs-CZ")}
+        Platnost do: ${expiry.toLocaleDateString("cs-CZ")}
       </div>
 
     </div>
@@ -263,7 +273,7 @@ app.post("/submit", async (req, res) => {
 
   try {
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, "--no-sandbox"],
       executablePath: await chromium.executablePath(),
       headless: chromium.headless
     });
@@ -279,21 +289,37 @@ app.post("/submit", async (req, res) => {
 
     await browser.close();
 
+    /* 📧 EMAIL */
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: [process.env.EMAIL_USER, email, user.companyEmail],
+      to: [
+        process.env.EMAIL_USER,
+        email,
+        user.companyEmail
+      ],
       subject: "BOZP certifikát",
-      attachments: [{ filename: "certifikat.pdf", content: pdfBuffer }]
+      text: `${name} úspěšně absolvoval test (${score}/8)`,
+      attachments: [
+        {
+          filename: "certifikat.pdf",
+          content: pdfBuffer
+        }
+      ]
     });
 
-    res.send("OK CERT GENERATED");
+    res.send("✅ Certifikát odeslán");
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server error");
+    console.error("❌ ERROR:", err);
+    res.status(500).send(err.message || "Server error");
+  } finally {
+    if (browser) await browser.close().catch(() => {});
   }
 });
 
 /* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on " + PORT));
+
+app.listen(PORT, () => {
+  console.log("Server běží na portu " + PORT);
+});
