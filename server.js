@@ -35,11 +35,11 @@ app.use(express.static(__dirname, {
 
 /* ---------------- USERS (FIRMY) ---------------- */
 const users = {
-  admin: [
-    username: process.env.ADMIN_USERNAME,
-    passwordHash: process.env.ADMIN_HASH,
-    companyName: "ADMIN",
-    companyEmail: process.env.ADMIN_EMAIL
+//  admin: [
+//    username: process.env.ADMIN_USERNAME,
+//    passwordHash: process.env.ADMIN_HASH,
+//    companyName: "ADMIN",
+//    companyEmail: process.env.ADMIN_EMAIL
   },
   
   soud: {
