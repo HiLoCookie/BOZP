@@ -80,8 +80,16 @@
 
 <script src="script.js"></script>
 <script>
-  // 🔥 při každém načtení stránky tě odhlásí
-  window.location.href = "/force-logout";
+  const nav = performance.getEntriesByType("navigation")[0];
+
+  const isReload = nav && nav.type === "reload";
+  const alreadyVisited = sessionStorage.getItem("visited");
+
+  if (isReload && alreadyVisited) {
+    window.location.href = "/force-logout";
+  }
+
+  sessionStorage.setItem("visited", "true");
 </script>
 </body>
 </html>
