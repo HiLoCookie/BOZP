@@ -109,8 +109,8 @@ app.post("/login", (req, res) => {
     u => u.username === username && u.password === password
   );
 
-  if (!user) {
-    return res.status(401).send("Špatné přihlášení");
+  if (!selectedCompany) {
+    return res.status(400).send("Neznámá firma");
   }
 
   req.session.user = {
@@ -168,7 +168,7 @@ app.post("/submit", async (req, res) => {
       ? companyDisplay
       : typeof company === "string" && company.trim()
         ? company
-        : user.companyName;
+        : selectedCompany.companyName;
 
   /* 📄 CERT HTML */
   const html = `
@@ -332,7 +332,7 @@ app.post("/submit", async (req, res) => {
       to: [
         process.env.EMAIL_USER,
         email,
-        user.companyEmail
+        selectedCompany.companyEmail
       ],
       subject: "BOZP certifikát",
       text: `${name} úspěšně absolvoval test (${score}/8)`,
