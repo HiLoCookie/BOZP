@@ -10,7 +10,6 @@
 <body>
 
 <header class="header">
-  
   <a href="https://www.pohas.cz/" target="_blank" class="logo-link">
     <img src="/src/logo.png" class="logo" alt="POHAS">
   </a>
@@ -19,14 +18,12 @@
     <h1>BOZP Školení</h1>
     <p>POHAS s.r.o.</p>
   </div>
-
 </header>
 
 <div class="container">
 
   <section class="card">
     <h2>Prezentace</h2>
-
     <embed src="/src/prezentace.pdf" width="100%" height="600px" />
   </section>
 
@@ -36,12 +33,12 @@
     <form id="testForm" class="form">
 
       <div class="form-group">
-        <label for="name">Jméno a příjmení</label>
+        <label>Jméno a příjmení</label>
         <input type="text" id="name" required>
       </div>
 
       <div class="form-group">
-        <label for="email">Email</label>
+        <label>Email</label>
         <input type="email" id="email" required>
       </div>
 
@@ -57,12 +54,7 @@
       <label class="gdpr">
         <input type="checkbox" required>
         Beru na vědomí zpracování osobních údajů.
-        <a href="gdpr.html" target="_blank">Více informací</a>
       </label>
-
-      <div class="gdpr">
-        V případě potíží se znovu <a href="https://bozp.onrender.com/login.html">přihlaste na tomto odkaze </a>
-      </div>
 
       <div id="questions"></div>
 
@@ -74,23 +66,14 @@
 
 </div>
 
-<footer>
-  © 2026 
-  <a href="https://www.pohas.cz/" target="_blank">POHAS s.r.o.</a>
-</footer>
-
 <script src="script.js"></script>
+
 <script>
   const nav = performance.getEntriesByType("navigation")[0];
-
-  const isReload = nav && nav.type === "reload";
-  const alreadyVisited = sessionStorage.getItem("visited");
-
-  if (isReload && alreadyVisited) {
+  if (nav && nav.type === "reload") {
     window.location.href = "/force-logout";
   }
-
-  sessionStorage.setItem("visited", "true");
 </script>
+
 </body>
 </html>
