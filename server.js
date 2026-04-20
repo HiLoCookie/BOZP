@@ -43,6 +43,13 @@ const users = {
     companyEmail: process.env.COMPANY_SOUD_EMAIL
   },
 
+  admin: {
+    username: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASS,
+    companyName: "ADMIN",
+    companyEmail: process.env.EMAIL_USER
+  },
+
   ostatni: {
     username: process.env.COMPANY_OSTATNI_USERNAME,
     password: process.env.COMPANY_OSTATNI_PASS,
