@@ -40,7 +40,7 @@ const users = {
 //    passwordHash: process.env.ADMIN_HASH,
 //    companyName: "ADMIN",
 //    companyEmail: process.env.ADMIN_EMAIL
-  },
+//  },
   
   soud: {
     username: process.env.COMPANY_SOUD_USERNAME,
