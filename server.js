@@ -2,10 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
 const path = require("path");
+const fs = require("fs");
 
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
-const baseUrl = process.env.BASE_URL || "http://localhost:3000";
 
 const app = express();
 
@@ -15,9 +15,7 @@ app.use(express.static(__dirname));
 
 /* 🔐 MAPA FIREM (ENV) */
 const companyEmails = {
-  "Okresní soud v Teplicích": process.env.COMPANY_SOUD,
-  // "ABC": process.env.COMPANY_ABC,
-  // "XYZ": process.env.COMPANY_XYZ
+  "SOUD": process.env.COMPANY_SOUD
 };
 
 /* 📧 EMAIL */
@@ -41,11 +39,10 @@ app.get("/", (req, res) => {
 
 /* 📩 SUBMIT */
 app.post("/submit", async (req, res) => {
-  const { name, email, company, score, passed } = req.body;
+  const { name, email, company, companyDisplay, score, passed } = req.body;
 
   console.log("📩 DATA:", req.body);
 
-  // 🔒 validace firmy
   const companyEmail = companyEmails[company];
 
   if (!companyEmail) {
@@ -61,150 +58,165 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
+  /* 🖼️ LOGO → BASE64 (ZE /src/logo.png) */
+  const logoPath = path.join(__dirname, "src", "logo.png");
+
+  let logoBase64 = "";
+
+  try {
+    logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
+  } catch (err) {
+    console.error("❌ Logo se nepodařilo načíst:", err);
+  }
+
   /* 🎨 HTML CERTIFIKÁT */
   const html = `
-<html>
-<head>
-<meta charset="UTF-8" />
-<style>
-  @page { size: A4; margin: 0; }
+  <html>
+  <head>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: A4; margin: 0; }
 
-  body {
-    margin: 0;
-    font-family: Arial;
-  }
+    body {
+      margin: 0;
+      font-family: Arial;
+    }
 
-  .page {
-    width: 210mm;
-    height: 297mm;
-    padding: 25mm;
-    box-sizing: border-box;
-    position: relative;
-    border: 12px solid #b30000;
-  }
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 25mm;
+      box-sizing: border-box;
+      position: relative;
+      border: 12px solid #b30000;
+    }
 
-  .title {
-    text-align: center;
-    font-size: 34px;
-    font-weight: bold;
-    color: #b30000;
-    margin-top: 20mm;
-  }
+    .title {
+      text-align: center;
+      font-size: 34px;
+      font-weight: bold;
+      color: #b30000;
+      margin-top: 20mm;
+    }
 
-  .subtitle {
-    text-align: center;
-    font-size: 18px;
-    margin-top: 20px;
-  }
+    .subtitle {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 20px;
+    }
 
-  .name {
-    text-align: center;
-    font-size: 38px;
-    font-weight: bold;
-    margin-top: 25px;
-    text-decoration: underline;
-  }
+    .name {
+      text-align: center;
+      font-size: 38px;
+      font-weight: bold;
+      margin-top: 25px;
+      text-decoration: underline;
+    }
 
-  .info {
-    text-align: center;
-    margin-top: 30px;
-    font-size: 14px;
-  }
+    .info {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 14px;
+    }
 
-  .date-left {
-    position: absolute;
-    bottom: 20mm;
-    left: 25mm;
-    font-size: 12px;
-  }
+    .logo {
+      position: absolute;
+      bottom: 80mm;
+      left: 50%;
+      transform: translateX(-50%);
+    }
 
-  .date-right {
-    position: absolute;
-    bottom: 20mm;
-    right: 25mm;
-    font-size: 12px;
-    text-align: right;
-  }
+    .logo img {
+      width: 120px;
+    }
 
-  .footer {
-    position: absolute;
-    bottom: 45mm;
-    left: 25mm;
-    right: 25mm;
-    text-align: center;
-    font-size: 12px;
-    line-height: 1.5;
-  }
+    .footer {
+      position: absolute;
+      bottom: 45mm;
+      left: 25mm;
+      right: 25mm;
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.5;
+    }
 
-  .logo {
-    position: absolute;
-    bottom: 75mm;
-    left: 50%;
-    transform: translateX(-50%);
-  }
+    .cert-info {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #444;
+    }
 
-  .logo img {
-    width: 120px;
-  }
+    .date-left {
+      position: absolute;
+      bottom: 20mm;
+      left: 25mm;
+      font-size: 12px;
+    }
 
-  .cert-info {
-    margin-top: 10px;
-    font-size: 11px;
-    color: #444;
-  }
+    .date-right {
+      position: absolute;
+      bottom: 20mm;
+      right: 25mm;
+      font-size: 12px;
+      text-align: right;
+    }
 
-</style>
-</head>
+  </style>
+  </head>
 
-<body>
-  <div class="page">
+  <body>
+    <div class="page">
 
-    <div class="title">CERTIFIKÁT BOZP a PO</div>
+      <div class="title">CERTIFIKÁT BOZP a PO</div>
 
-    <div class="subtitle">Potvrzujeme, že</div>
+      <div class="subtitle">Potvrzujeme, že</div>
 
-    <div class="name">${name}</div>
+      <div class="name">${name}</div>
 
-    <div class="subtitle">
-      úspěšně absolvoval/a školení a test BOZP a PO
-    </div>
-
-    <div class="info">
-      Firma: ${companyDisplay || company}<br>
-      Skóre: ${score}/8
-    </div>
-
-    <!-- LOGO -->
-    <div class="logo">
-      <img src="${baseUrl}/logo.png" />
-    </div>
-
-    <!-- TEXT POD LOGEM -->
-    <div class="footer">
-      Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.
-
-      <div class="cert-info">
-        <br>
-        PO – Osvědčení o odborné způsobilosti dle § 11 zák. České národní rady č. 133/1985 Sb., o požární ochraně, ve znění pozdějších předpisů pod číslem Š-221/95
-        <br><br>
-        BOZP – evidenční číslo ověření ROVS/1834/PREV/2023
+      <div class="subtitle">
+        úspěšně absolvoval/a školení a test BOZP a PO
       </div>
-    </div>
 
-    <div class="date-left">
-      Datum absolvování:<br>
-      <strong>${today.toLocaleDateString("cs-CZ")}</strong>
-    </div>
+      <div class="info">
+        Firma: ${companyDisplay || company}<br>
+        Skóre: ${score}/8
+      </div>
 
-    <div class="date-right">
-      Platnost do:<br>
-      <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
-    </div>
+      <!-- LOGO -->
+      ${
+        logoBase64
+          ? `<div class="logo">
+               <img src="data:image/png;base64,${logoBase64}" />
+             </div>`
+          : ""
+      }
 
-  </div>
-</body>
-</html>
-`;
+      <!-- TEXT -->
+      <div class="footer">
+        Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.
+
+        <div class="cert-info">
+          <br>
+          PO – Osvědčení o odborné způsobilosti dle § 11 zák. ČNR č. 133/1985 Sb., pod číslem Š-221/95
+          <br><br>
+          BOZP – evidenční číslo ověření ROVS/1834/PREV/2023
+        </div>
+      </div>
+
+      <div class="date-left">
+        Datum absolvování:<br>
+        <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+      </div>
+
+      <div class="date-right">
+        Platnost do:<br>
+        <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+      </div>
+
+    </div>
+  </body>
+  </html>
+  `;
 
   let browser;
 
@@ -253,7 +265,9 @@ app.post("/submit", async (req, res) => {
     console.error("❌ ERROR:", err);
     res.status(500).send(err.message || "Chyba serveru");
   } finally {
-    if (browser) await browser.close().catch(() => {});
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 });
 
