@@ -5,7 +5,7 @@ const path = require("path");
 const fs = require("fs");
 
 const session = require("express-session");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
@@ -18,15 +18,19 @@ app.use(cors({
   origin: true,
   credentials: true
 }));
-app.use(express.static(__dirname));
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false // Render HTTP ok (HTTPS tam řeší proxy)
+    secure: false
   }
+}));
+
+/* ❗ STATIC (bez index auto-loadu) */
+app.use(express.static(__dirname, {
+  index: false
 }));
 
 /* ---------------- USERS (FIRMY) ---------------- */
@@ -48,9 +52,24 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ---------------- TEST ---------------- */
+/* ---------------- AUTH MIDDLEWARE ---------------- */
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect("/login.html");
+  }
+  next();
+}
+
+/* ---------------- ROUTES ---------------- */
+
+/* TEST SERVER */
 app.get("/api/test", (req, res) => {
   res.send("Server běží ✅");
+});
+
+/* LOGIN PAGE PROTECTION (optional) */
+app.get("/index.html", requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 /* ---------------- LOGIN ---------------- */
@@ -71,18 +90,12 @@ app.post("/login", async (req, res) => {
     return res.status(401).send("Špatné přihlášení");
   }
 
-  req.session.user = { username };
+  req.session.user = {
+    username
+  };
 
   res.send("OK");
 });
-
-/* ---------------- AUTH MIDDLEWARE ---------------- */
-function requireAuth(req, res, next) {
-  if (!req.session.user) {
-    return res.status(401).send("Nepřihlášen");
-  }
-  next();
-}
 
 /* ---------------- SUBMIT ---------------- */
 app.post("/submit", requireAuth, async (req, res) => {
@@ -104,16 +117,6 @@ app.post("/submit", requireAuth, async (req, res) => {
   const today = new Date();
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
-
-  /* ---------------- LOGO ---------------- */
-  const logoPath = path.join(__dirname, "src", "logo.png");
-
-  let logoBase64 = "";
-  try {
-    logoBase64 = fs.readFileSync(logoPath, "base64");
-  } catch (err) {
-    console.error("Logo error:", err);
-  }
 
   /* ---------------- HTML CERT ---------------- */
   const html = `
@@ -156,17 +159,6 @@ app.post("/submit", requireAuth, async (req, res) => {
       font-size: 14px;
     }
 
-    .logo {
-      position: absolute;
-      bottom: 80mm;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .logo img {
-      width: 120px;
-    }
-
     .footer {
       position: absolute;
       bottom: 45mm;
@@ -188,7 +180,6 @@ app.post("/submit", requireAuth, async (req, res) => {
       bottom: 20mm;
       right: 25mm;
       font-size: 12px;
-      text-align: right;
     }
   </style>
   </head>
@@ -205,16 +196,8 @@ app.post("/submit", requireAuth, async (req, res) => {
         Skóre: ${score}/8
       </div>
 
-      ${
-        logoBase64
-          ? `<div class="logo">
-               <img src="data:image/png;base64,${logoBase64}" />
-             </div>`
-          : ""
-      }
-
       <div class="footer">
-        Školení provedeno společností POHAS s.r.o.<br><br>
+        Školení provedeno společností POHAS s.r.o.<br>
         PO – Š-221/95<br>
         BOZP – ROVS/1834/PREV/2023
       </div>
@@ -235,7 +218,6 @@ app.post("/submit", requireAuth, async (req, res) => {
   let browser;
 
   try {
-    /* ---------------- PUPPETEER ---------------- */
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
@@ -255,7 +237,6 @@ app.post("/submit", requireAuth, async (req, res) => {
 
     await browser.close();
 
-    /* ---------------- EMAIL ---------------- */
     await transporter.sendMail({
       from: `BOZP systém <${process.env.EMAIL_USER}>`,
       to: [
