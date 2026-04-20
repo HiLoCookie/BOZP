@@ -5,6 +5,7 @@ const path = require("path");
 
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
 
 const app = express();
 
@@ -62,114 +63,148 @@ app.post("/submit", async (req, res) => {
 
   /* 🎨 HTML CERTIFIKÁT */
   const html = `
-  <html>
-  <head>
-  <meta charset="UTF-8" />
-  <style>
-    @page { size: A4; margin: 0; }
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4; margin: 0; }
 
-    body {
-      margin: 0;
-      font-family: Arial;
-    }
+  body {
+    margin: 0;
+    font-family: Arial;
+  }
 
-    .page {
-      width: 210mm;
-      height: 297mm;
-      padding: 25mm;
-      box-sizing: border-box;
-      position: relative;
-      border: 12px solid #b30000;
-    }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 25mm;
+    box-sizing: border-box;
+    position: relative;
+    border: 12px solid #b30000;
+  }
 
-    .title {
-      text-align: center;
-      font-size: 34px;
-      font-weight: bold;
-      color: #b30000;
-      margin-top: 20mm;
-    }
+  .title {
+    text-align: center;
+    font-size: 34px;
+    font-weight: bold;
+    color: #b30000;
+    margin-top: 20mm;
+  }
 
-    .subtitle {
-      text-align: center;
-      font-size: 18px;
-      margin-top: 20px;
-    }
+  .subtitle {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+  }
 
-    .name {
-      text-align: center;
-      font-size: 38px;
-      font-weight: bold;
-      margin-top: 25px;
-      text-decoration: underline;
-    }
+  .name {
+    text-align: center;
+    font-size: 38px;
+    font-weight: bold;
+    margin-top: 25px;
+    text-decoration: underline;
+  }
 
-    .info {
-      text-align: center;
-      margin-top: 30px;
-      font-size: 14px;
-    }
+  .info {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 14px;
+  }
 
-    .date-left {
-      position: absolute;
-      bottom: 20mm;
-      left: 25mm;
-      font-size: 12px;
-    }
+  .date-left {
+    position: absolute;
+    bottom: 20mm;
+    left: 25mm;
+    font-size: 12px;
+  }
 
-    .date-right {
-      position: absolute;
-      bottom: 20mm;
-      right: 25mm;
-      font-size: 12px;
-      text-align: right;
-    }
+  .date-right {
+    position: absolute;
+    bottom: 20mm;
+    right: 25mm;
+    font-size: 12px;
+    text-align: right;
+  }
 
-    .footer {
-      position: absolute;
-      bottom: 40mm;
-      left: 25mm;
-      right: 25mm;
-      text-align: center;
-      font-size: 13px;
-    }
-  </style>
-  </head>
+  .footer {
+    position: absolute;
+    bottom: 45mm;
+    left: 25mm;
+    right: 25mm;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+  }
 
-  <body>
-    <div class="page">
-      <div class="title">CERTIFIKÁT BOZP a PO</div>
+  .logo {
+    position: absolute;
+    bottom: 75mm;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 
-      <div class="subtitle">Potvrzujeme, že</div>
+  .logo img {
+    width: 120px;
+  }
 
-      <div class="name">${name}</div>
+  .cert-info {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #444;
+  }
 
-      <div class="subtitle">
-        úspěšně absolvoval/a školení a test BOZP a PO
-      </div>
+</style>
+</head>
 
-      <div class="info">
-        Firma: ${company}<br>
-        Skóre: ${score}/8
-      </div>
+<body>
+  <div class="page">
 
-      <div class="date-left">
-        Datum absolvování:<br>
-        <strong>${today.toLocaleDateString("cs-CZ")}</strong>
-      </div>
+    <div class="title">CERTIFIKÁT BOZP a PO</div>
 
-      <div class="date-right">
-        Platnost do:<br>
-        <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
-      </div>
+    <div class="subtitle">Potvrzujeme, že</div>
 
-      <div class="footer">
-        Školení bylo provedeno společností POHAS s.r.o.
+    <div class="name">${name}</div>
+
+    <div class="subtitle">
+      úspěšně absolvoval/a školení a test BOZP a PO
+    </div>
+
+    <div class="info">
+      Firma: ${companyDisplay || company}<br>
+      Skóre: ${score}/8
+    </div>
+
+    <!-- LOGO -->
+    <div class="logo">
+      <img src="${baseUrl}/logo.png" />
+    </div>
+
+    <!-- TEXT POD LOGEM -->
+    <div class="footer">
+      Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.
+
+      <div class="cert-info">
+        <br>
+        PO – Osvědčení o odborné způsobilosti dle § 11 zák. České národní rady č. 133/1985 Sb., o požární ochraně, ve znění pozdějších předpisů pod číslem Š-221/95
+        <br><br>
+        BOZP – evidenční číslo ověření ROVS/1834/PREV/2023
       </div>
     </div>
-  </body>
-  </html>
-  `;
+
+    <div class="date-left">
+      Datum absolvování:<br>
+      <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+    <div class="date-right">
+      Platnost do:<br>
+      <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+    </div>
+
+  </div>
+</body>
+</html>
+`;
 
   let browser;
 
