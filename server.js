@@ -15,7 +15,7 @@ app.use(express.static(__dirname));
 
 /* 🔐 MAPA FIREM (ENV) */
 const companyEmails = {
-  "SOUD": process.env.COMPANY_SOUD
+  "Okresní soud v Teplicích": process.env.COMPANY_SOUD
 };
 
 /* 📧 EMAIL */
