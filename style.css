@@ -73,28 +73,77 @@ embed {
   align-items: center;
 }
 
+/* každý field jako blok */
 .form-group {
   width: 100%;
-  max-width: 500px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* label */
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* input + select sjednocení */
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px 14px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+
+  font-size: 15px;
+  background: #fff;
+
+  transition: 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #b00020;
+  box-shadow: 0 0 0 3px rgba(176, 0, 32, 0.12);
 }
 
 /* ====== GDPR ====== */
 .gdpr {
-  text-align: center;
-  margin-top: 15px;
+  width: 100%;
+  max-width: 420px;
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 10px;
 }
 
-/* ====== BUTTON ====== */
 button {
-  margin-top: 15px;
-  padding: 12px 20px;
+  margin-top: 18px;
+  padding: 12px 18px;
+
   background: #b00020;
   color: white;
+
   border: none;
   border-radius: 8px;
+
   cursor: pointer;
+
   width: 100%;
-  max-width: 300px;
+  max-width: 220px;
+
+  font-weight: 600;
+
+  transition: 0.2s ease;
+}
+
+button:hover {
+  background: #7a0015;
+  transform: translateY(-1px);
 }
 
 /* ====== RESULT ====== */
