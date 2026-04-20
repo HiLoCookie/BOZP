@@ -134,7 +134,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     const res = await fetch("/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include", // 🔥 session cookie
+      credentials: "include", // 🔥 DŮLEŽITÉ
       body: JSON.stringify({
         name,
         email,
