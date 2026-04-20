@@ -1,10 +1,13 @@
 :root {
   --primary: #b00020;
   --primary-dark: #7a0015;
-  --bg: #f4f6f9;
+
+  --bg: #f3f5f8;
+  --card: #ffffff;
+
   --text: #1b1f24;
   --muted: #6b7280;
-  --card: #ffffff;
+
   --border: #e5e7eb;
 }
 
