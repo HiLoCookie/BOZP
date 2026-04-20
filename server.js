@@ -206,6 +206,14 @@ app.post("/submit", async (req, res) => {
         Skóre: ${score}
       </div>
 
+      ${
+        logoBase64
+          ? `<div style="text-align:center; margin-top:10mm;">
+               <img src="data:image/png;base64,${logoBase64}" style="width:120px;" />
+             </div>`
+          : ""
+      }
+
       <div class="footer">
         POHAS s.r.o. – školení BOZP a PO
       </div>
