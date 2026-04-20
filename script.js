@@ -138,7 +138,8 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({
         name,
         email,
-        company,
+        company: document.getElementById("company").value,
+        companyDisplay: document.getElementById("company").selectedOptions[0]?.text || "",
         score,
         passed
       })
