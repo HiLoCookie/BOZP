@@ -91,13 +91,13 @@ questions.forEach((q, i) => {
   container.appendChild(div);
 });
 
-/* 📩 SUBMIT */
+/* 📩 SUBMIT TESTU */
 document.getElementById("testForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   let score = 0;
 
-  /* 📊 VÝPOČET */
+  /* 📊 VYHODNOCENÍ */
   questions.forEach((q, i) => {
     const checked = document.querySelector(
       `input[name="q${i}"]:checked`
@@ -111,15 +111,18 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   const passed = score >= 6;
 
   const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = `Score: ${score}/8`;
 
+  resultDiv.innerHTML = `Score: ${score}/8`;
   resultDiv.innerHTML += passed
     ? "<br>✅ Úspěšné splnění testu"
     : "<br>❌ Neúspěšné splnění testu";
 
-  /* 🔐 INPUTS */
-  const name = document.getElementById("name")?.value?.trim();
-  const email = document.getElementById("email")?.value?.trim();
+  /* 🔐 INPUT VALUES */
+  const nameEl = document.getElementById("name");
+  const emailEl = document.getElementById("email");
+
+  const name = nameEl?.value?.trim();
+  const email = emailEl?.value?.trim();
 
   if (!name || !email) {
     alert("Vyplň jméno a email");
@@ -131,7 +134,7 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     const res = await fetch("/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include", // 🔥 důležité pro session login
+      credentials: "include", // 🔥 session cookie
       body: JSON.stringify({
         name,
         email,
@@ -141,13 +144,16 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
     });
 
     const text = await res.text();
+
     console.log("SERVER RESPONSE:", text);
 
     if (!res.ok) {
       alert("❌ Chyba serveru: " + text);
-    } else {
-      alert("✅ Hotovo: " + text);
+      return;
     }
+
+    alert("✅ Hotovo: " + text);
+
   } catch (err) {
     console.error("❌ FETCH ERROR:", err);
     alert("Nepodařilo se odeslat formulář");
