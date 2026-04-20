@@ -3,7 +3,6 @@ const cors = require("cors");
 const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
-
 const session = require("express-session");
 
 const puppeteer = require("puppeteer-core");
@@ -19,13 +18,15 @@ app.use(cors({
   credentials: true
 }));
 
+/* 🔐 SESSION (LEPŠÍ VARIANTA) */
 app.use(session({
-  secret: process.env.SESSION_SECRET || "secret123",
+  secret: process.env.SESSION_SECRET || "super-secret-change-me",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Render HTTP/HTTPS kompatibilita
-    sameSite: "lax"
+    secure: false, // Render = HTTP/HTTPS mix
+    sameSite: "lax",
+    maxAge: 1000 * 60 * 30 // 🔥 30 minut session timeout
   }
 }));
 
@@ -60,10 +61,18 @@ app.get("/", (req, res) => {
   res.redirect("/index.html");
 });
 
-// protect main app
+// login page explicit
+app.get("/login.html", (req, res) => {
+  if (req.session.user) {
+    return res.redirect("/index.html");
+  }
+  res.sendFile(path.join(__dirname, "login.html"));
+});
+
+// protected app
 app.get("/index.html", (req, res) => {
   if (!req.session.user) {
-    return res.redirect("/");
+    return res.redirect("/login.html");
   }
   res.sendFile(path.join(__dirname, "index.html"));
 });
@@ -82,16 +91,22 @@ app.post("/login", (req, res) => {
   }
 
   req.session.user = {
-    username
+    username: user.username
   };
 
   res.send("OK");
 });
 
+/* ---------------- LOGOUT ---------------- */
+app.post("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.send("logged out");
+  });
+});
+
 /* ---------------- SUBMIT ---------------- */
 app.post("/submit", async (req, res) => {
-  console.log("📩 SUBMIT HIT", req.body);
-
   if (!req.session.user) {
     return res.status(401).send("Not logged in");
   }
@@ -121,16 +136,18 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
+  /* ---------------- LOGO ---------------- */
   const logoPath = path.join(__dirname, "src", "logo.png");
-
   let logoBase64 = "";
 
   try {
-    logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
-  } catch (err) {
-    console.error("Logo error:", err);
+    logoBase64 = fs.readFileSync(logoPath, "base64");
+  } catch (e) {
+    console.error("Logo error:", e);
   }
-  
+
+  const safeCompany = companyDisplay || company || "Neuvedeno";
+
   /* ---------------- HTML CERT ---------------- */
   const html = `
   <html>
@@ -171,8 +188,7 @@ app.post("/submit", async (req, res) => {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.08; /* aby nerušilo text */
-      z-index: 0;
+      opacity: 0.08;
     }
 
     .logo-center img {
@@ -215,7 +231,7 @@ app.post("/submit", async (req, res) => {
       <div class="name">${name}</div>
 
       <div class="info">
-        Firma: ${companyDisplay || company || "Neuvedeno"}<br>
+        Firma: ${safeCompany}<br>
         Skóre: ${score}
       </div>
 
@@ -224,19 +240,18 @@ app.post("/submit", async (req, res) => {
       </div>
 
       <div class="footer">
-          Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.<br><br>
+        Školení a testování byly provedeny společností POHAS s.r.o., která zajišťuje BOZP vzdělávání a certifikaci zaměstnanců.<br><br>
 
-          <strong>Odborné certifikace školitele:</strong><br>
-          PO – Osvědčení dle §11 zák. č. 133/1985 Sb. — evidenční číslo: Š-221/95<br>
-          BOZP – Ověření odborné způsobilosti: ROVS/1834/PREV/2023
+        PO – Š-221/95<br>
+        BOZP – ROVS/1834/PREV/2023
       </div>
 
       <div class="date-left">
-        Datum absolvování: ${today.toLocaleDateString("cs-CZ")}
+        Absolvování testu: ${today.toLocaleDateString("cs-CZ")}
       </div>
 
       <div class="date-right">
-        Expirace školení: ${expiry.toLocaleDateString("cs-CZ")}
+        Expirace testu: ${expiry.toLocaleDateString("cs-CZ")}
       </div>
 
     </div>
@@ -247,22 +262,15 @@ app.post("/submit", async (req, res) => {
   let browser;
 
   try {
-    /* ---------------- PUPPETEER ---------------- */
     browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        "--no-sandbox",
-        "--disable-setuid-sandbox"
-      ],
+      args: chromium.args,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless
     });
 
     const page = await browser.newPage();
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded"
-    });
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
 
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -271,43 +279,21 @@ app.post("/submit", async (req, res) => {
 
     await browser.close();
 
-    /* ---------------- EMAIL ---------------- */
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: [
-          process.env.EMAIL_USER,
-          email,
-          user.companyEmail
-        ],
-        subject: "BOZP certifikát",
-        text: `${name} úspěšně absolvoval test`,
-        attachments: [
-          {
-            filename: "certifikat.pdf",
-            content: pdfBuffer
-          }
-        ]
-      });
-
-      console.log("📧 Email odeslán");
-    } catch (mailErr) {
-      console.error("❌ Email error:", mailErr);
-    }
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: [process.env.EMAIL_USER, email, user.companyEmail],
+      subject: "BOZP certifikát",
+      attachments: [{ filename: "certifikat.pdf", content: pdfBuffer }]
+    });
 
     res.send("OK CERT GENERATED");
 
   } catch (err) {
-    console.error("❌ SERVER ERROR:", err);
-    res.status(500).send(err.message || "Server error");
-  } finally {
-    if (browser) await browser.close().catch(() => {});
+    console.error(err);
+    res.status(500).send("Server error");
   }
 });
 
 /* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on " + PORT);
-});
+app.listen(PORT, () => console.log("Server running on " + PORT));
