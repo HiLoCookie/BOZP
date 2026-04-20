@@ -1,3 +1,4 @@
+
 :root {
   --primary: #b00020;
   --primary-dark: #7a0015;
@@ -46,7 +47,6 @@ body {
 .header-text h1 {
   margin: 0;
   font-size: 1.8rem;
-  letter-spacing: 0.4px;
 }
 
 .header-text p {
@@ -106,6 +106,7 @@ embed {
   gap: 14px;
 }
 
+/* FIELD GROUP */
 .form-group {
   width: 100%;
   max-width: 450px;
@@ -144,7 +145,7 @@ embed {
 .gdpr {
   max-width: 450px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted);
 
   display: flex;
   gap: 8px;
@@ -190,10 +191,6 @@ button:hover {
   box-shadow: 0 10px 22px rgba(176, 0, 32, 0.25);
 }
 
-button:active {
-  transform: translateY(0);
-}
-
 /* ================= RESULT ================= */
 #result {
   margin-top: 16px;
@@ -214,16 +211,16 @@ button:active {
   margin-right: auto;
 }
 
-/* ================= QUESTIONS (IMPORTANT FIX) ================= */
+/* ================= QUESTIONS ================= */
+/* desktop – kompaktní */
 #questions {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 
-/* každá otázka */
 #questions > * {
-  padding: 12px 0;
+  padding: 6px 0;
   border-bottom: 1px solid #eef0f3;
 }
 
@@ -231,13 +228,21 @@ button:active {
   border-bottom: none;
 }
 
-/* otázky – zvýraznění */
-#questions label,
-.question {
+/* 🔴 pouze OTÁZKY */
+#questions .question,
+#questions label.question {
   color: var(--primary-dark);
-  font-weight: 600;
+  font-weight: 700;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+/* ⚪ odpovědi zůstávají neutrální */
+#questions input,
+#questions select,
+#questions option {
+  color: var(--text);
+  font-weight: 400;
 }
 
 /* ================= FOOTER ================= */
@@ -276,9 +281,9 @@ footer a {
     min-width: unset;
   }
 
-  /* 🔥 MOBILE QUESTION SPACING FIX */
+  /* 📱 MOBILE ONLY spacing */
   #questions {
-    gap: 24px;
+    gap: 26px;
   }
 
   #questions > * {
