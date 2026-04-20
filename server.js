@@ -96,7 +96,14 @@ app.post("/submit", async (req, res) => {
     return res.status(401).send("Not logged in");
   }
 
-  const { name, email, company, score, passed } = req.body;
+  const {
+    name,
+    email,
+    company,
+    companyDisplay,
+    score,
+    passed
+  } = req.body;
 
   const user = Object.values(users).find(
     u => u.username === req.session.user.username
@@ -114,6 +121,16 @@ app.post("/submit", async (req, res) => {
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
+  const logoPath = path.join(__dirname, "src", "logo.png");
+
+  let logoBase64 = "";
+
+  try {
+    logoBase64 = fs.readFileSync(logoPath, { encoding: "base64" });
+  } catch (err) {
+    console.error("Logo error:", err);
+  }
+  
   /* ---------------- HTML CERT ---------------- */
   const html = `
   <html>
@@ -185,7 +202,7 @@ app.post("/submit", async (req, res) => {
       <div class="name">${name}</div>
 
       <div class="info">
-        Firma: ${company}<br>
+        Firma: ${companyDisplay || company || "Neuvedeno"}<br>
         Skóre: ${score}
       </div>
 
