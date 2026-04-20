@@ -8,6 +8,11 @@
   text-align: center;
 }
 
+.company {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
 .logo {
   height: 60px;
   width: auto;
