@@ -1,0 +1,119 @@
+:root {
+  --primary: #b00020;
+  --primary-dark: #7a0015;
+  --bg: #f4f6f9;
+  --text: #1b1f24;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #e5e7eb;
+}
+
+/* RESET */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* PAGE WRAPPER */
+.container {
+  max-width: 900px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+
+/* CARD */
+.card {
+  background: var(--card);
+  padding: 40px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.08);
+}
+
+/* HEADER TEXT */
+h1 {
+  margin-top: 0;
+  font-size: 28px;
+  color: var(--primary-dark);
+  text-align: center;
+  letter-spacing: 0.3px;
+}
+
+h2 {
+  margin-top: 28px;
+  font-size: 18px;
+  color: var(--primary-dark);
+  border-left: 4px solid var(--primary);
+  padding-left: 10px;
+}
+
+/* PARAGRAPHS */
+p {
+  margin: 10px 0;
+  color: var(--text);
+}
+
+/* LISTS */
+ul {
+  margin: 10px 0 10px 20px;
+}
+
+li {
+  margin-bottom: 6px;
+}
+
+/* IMPORTANT INFO BOX */
+.note {
+  margin-top: 25px;
+  padding: 14px 16px;
+
+  background: #fff5f6;
+  border-left: 4px solid var(--primary);
+
+  border-radius: 8px;
+
+  font-size: 14px;
+  color: #4b5563;
+}
+
+/* EMPHASIS */
+strong {
+  color: var(--primary-dark);
+}
+
+/* FOOTER */
+footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* LINKS */
+a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .card {
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+}
