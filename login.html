@@ -1,27 +1,123 @@
-<!-- login.html -->
-<form id="loginForm">
-  <input id="username" placeholder="Uživatelské jméno" required />
-  <input id="password" type="password" placeholder="Heslo" required />
-  <button>Přihlásit</button>
-</form>
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BOZP Login</title>
 
-<script>
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-  const res = await fetch("/login", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      username: document.getElementById("username").value,
-      password: document.getElementById("password").value
-    })
-  });
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 320px;
+      text-align: center;
+    }
 
-  if (res.ok) {
-    window.location.href = "/";
-  } else {
-    alert("Špatné přihlašovací údaje");
-  }
-});
-</script>
+    h2 {
+      margin-bottom: 20px;
+      color: #b30000;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #b30000;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #8c0000;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-box">
+    <h2>BOZP přihlášení</h2>
+
+    <input type="text" id="username" placeholder="Uživatelské jméno" />
+    <input type="password" id="password" placeholder="Heslo" />
+
+    <button onclick="login()">Přihlásit se</button>
+
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    async function login() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorDiv = document.getElementById("error");
+
+      errorDiv.innerText = "";
+
+      if (!username || !password) {
+        errorDiv.innerText = "Vyplň přihlašovací údaje";
+        return;
+      }
+
+      try {
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            username,
+            password
+          })
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+          errorDiv.innerText = "Špatné přihlášení";
+          return;
+        }
+
+        // 🔥 redirect na test
+        window.location.href = "/index.html";
+
+      } catch (err) {
+        console.error(err);
+        errorDiv.innerText = "Chyba serveru";
+      }
+    }
+  </script>
+
+</body>
+</html>
