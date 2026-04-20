@@ -47,6 +47,13 @@ const users = {
     password: process.env.COMPANY_SOUD_PASS,
     companyName: "Okresní soud v Teplicích",
     companyEmail: process.env.COMPANY_SOUD_EMAIL
+  },
+
+  ostatni: {
+    username: process.env.COMPANY_OSTATNI_USERNAME,
+    password: process.env.COMPANY_OSTATNI_PASS,
+    companyName: "Ostatní",
+    companyEmail: process.env.COMPANY_OSTATNI_EMAIL
   }
 };
 
@@ -128,9 +135,11 @@ app.post("/submit", async (req, res) => {
     passed
   } = req.body;
 
-  const user = Object.values(users).find(
-    u => u.username === req.session.user.username
-  );
+  const selectedCompany = users[company];
+
+  if (!selectedCompany) {
+    return res.status(400).send("Neznámá firma");
+  }
 
   if (!user) {
     return res.status(400).send("User not found");
