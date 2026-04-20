@@ -10,7 +10,7 @@ const chromium = require("@sparticuz/chromium");
 
 const app = express();
 
-/* ---------------- MIDDLEWARE ---------------- */
+/* middleware */
 app.use(express.json());
 
 app.use(cors({
@@ -21,34 +21,26 @@ app.use(cors({
 app.set("trust proxy", 1);
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || "super-secret-change-me",
+  secret: process.env.SESSION_SECRET || "secret",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,        // 🔥 důležité pro Render (HTTPS)
-    sameSite: "none",    // 🔥 důležité pro cookies
-    maxAge: 1000 * 60 * 30 // 30 min
+    secure: true,
+    sameSite: "none",
+    maxAge: 1000 * 60 * 30
   }
 }));
 
 app.use(express.static(__dirname));
 
-/* ---------------- USERS ---------------- */
+/* USERS */
 const users = {
-  admin: {
-    username: process.env.ADMIN_USERNAME,
-    password: process.env.ADMIN_PASS,
-    companyName: "ADMIN",
-    companyEmail: process.env.EMAIL_USER
-  },
-  
   soud: {
     username: process.env.COMPANY_SOUD_USERNAME,
     password: process.env.COMPANY_SOUD_PASS,
     companyName: "Okresní soud v Teplicích",
     companyEmail: process.env.COMPANY_SOUD_EMAIL
   },
-
   ostatni: {
     username: process.env.COMPANY_OSTATNI_USERNAME,
     password: process.env.COMPANY_OSTATNI_PASS,
@@ -57,7 +49,7 @@ const users = {
   }
 };
 
-/* ---------------- EMAIL ---------------- */
+/* EMAIL */
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -66,111 +58,56 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ---------------- ROUTES ---------------- */
+/* ROUTES */
 
-// root
 app.get("/", (req, res) => {
-  if (!req.session.user) {
-    return res.sendFile(path.join(__dirname, "login.html"));
-  }
+  if (!req.session.user) return res.sendFile(path.join(__dirname, "login.html"));
   res.redirect("/index.html");
 });
 
-// login page
-app.get("/login.html", (req, res) => {
-  if (req.session.user) {
-    return res.redirect("/index.html");
-  }
-  res.sendFile(path.join(__dirname, "login.html"));
-});
-
-// protected page
 app.get("/index.html", (req, res) => {
-  if (!req.session.user) {
-    return res.redirect("/login.html");
-  }
+  if (!req.session.user) return res.redirect("/");
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-/* ---------------- FORCE LOGOUT ---------------- */
-app.get("/force-logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
-    res.redirect("/login.html");
-  });
-});
-
-/* ---------------- LOGIN ---------------- */
+/* LOGIN */
 app.post("/login", (req, res) => {
-  const username = req.body.username?.trim();
-  const password = req.body.password?.trim();
+  const { username, password } = req.body;
 
   const user = Object.values(users).find(
     u => u.username === username && u.password === password
   );
 
-  if (!selectedCompany) {
-    return res.status(400).send("Neznámá firma");
-  }
+  if (!user) return res.status(401).send("Špatné přihlášení");
 
-  req.session.user = {
-    username: user.username
-  };
-
+  req.session.user = { username };
   res.send("OK");
 });
 
-/* ---------------- SUBMIT ---------------- */
+/* SUBMIT */
 app.post("/submit", async (req, res) => {
-  if (!req.session.user) {
-    return res.status(401).send("Not logged in");
-  }
+  if (!req.session.user) return res.status(401).send("Not logged in");
 
-  const {
-    name,
-    email,
-    company,
-    companyDisplay,
-    score,
-    passed
-  } = req.body;
+  const { name, email, company, companyDisplay, score, passed } = req.body;
 
   const selectedCompany = users[company];
 
   if (!selectedCompany) {
+    console.log("UNKNOWN:", company);
     return res.status(400).send("Neznámá firma");
   }
 
-  if (!user) {
-    return res.status(400).send("User not found");
-  }
-
-  if (!passed) {
-    return res.send("Test neprošel ❌");
-  }
+  if (!passed) return res.send("Test neprošel ❌");
 
   const today = new Date();
   const expiry = new Date();
   expiry.setFullYear(today.getFullYear() + 2);
 
-  /* 🖼️ LOGO */
-  const logoPath = path.join(__dirname, "src", "logo.png");
-  let logoBase64 = "";
+  const logoBase64 = fs.readFileSync(path.join(__dirname, "src/logo.png"), "base64");
 
-  try {
-    logoBase64 = fs.readFileSync(logoPath, "base64");
-  } catch (e) {
-    console.error("Logo error:", e);
-  }
+  const safeCompany = companyDisplay || selectedCompany.companyName;
 
-  const safeCompany =
-    typeof companyDisplay === "string" && companyDisplay.trim()
-      ? companyDisplay
-      : typeof company === "string" && company.trim()
-        ? company
-        : selectedCompany.companyName;
-
-  /* 📄 CERT HTML */
+/* 📄 CERT HTML */
   const html = `
 <html>
 <head>
@@ -306,57 +243,27 @@ app.post("/submit", async (req, res) => {
 </body>
 </html>
 `;
-  let browser;
 
-  try {
-    browser = await puppeteer.launch({
-      args: [...chromium.args, "--no-sandbox"],
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless
-    });
+  const browser = await puppeteer.launch({
+    args: [...chromium.args, "--no-sandbox"],
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless
+  });
 
-    const page = await browser.newPage();
+  const page = await browser.newPage();
+  await page.setContent(html);
+  const pdf = await page.pdf({ format: "A4" });
+  await browser.close();
 
-    await page.setContent(html, { waitUntil: "domcontentloaded" });
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: [process.env.EMAIL_USER, email, selectedCompany.companyEmail],
+    subject: "BOZP certifikát",
+    attachments: [{ filename: "certifikat.pdf", content: pdf }]
+  });
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true
-    });
-
-    await browser.close();
-
-    /* 📧 EMAIL */
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: [
-        process.env.EMAIL_USER,
-        email,
-        selectedCompany.companyEmail
-      ],
-      subject: "BOZP certifikát",
-      text: `${name} úspěšně absolvoval test (${score}/8)`,
-      attachments: [
-        {
-          filename: "certifikat.pdf",
-          content: pdfBuffer
-        }
-      ]
-    });
-
-    res.send("✅ Certifikát odeslán");
-
-  } catch (err) {
-    console.error("❌ ERROR:", err);
-    res.status(500).send(err.message || "Server error");
-  } finally {
-    if (browser) await browser.close().catch(() => {});
-  }
+  res.send("Certifikát odeslán");
 });
 
-/* ---------------- START ---------------- */
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server běží na portu " + PORT);
-});
+/* START */
+app.listen(process.env.PORT || 3000);
