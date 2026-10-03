@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
 const session = require("express-session");
@@ -32,8 +31,6 @@ app.use(session({
   }
 }));
 
-app.use(express.static(__dirname));
-
 /* ---------------- USERS ---------------- */
 const users = {
   soud: {
@@ -58,14 +55,37 @@ const users = {
   }
 };
 
-/* ---------------- EMAIL ---------------- */
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+/* ---------------- EMAIL ----------------
+   Render (free) blokuje SMTP porty 25/465/587, proto Gmail přes nodemailer
+   nefunguje. E-maily se posílají přes HTTPS API služby Brevo.
+   Env proměnné: BREVO_API_KEY, EMAIL_USER (ověřený odesílatel v Brevo)
+---------------------------------------- */
+async function sendCertificate({ recipients, pdfBuffer, name }) {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      sender: { email: process.env.EMAIL_USER, name: "POHAS s.r.o. – BOZP" },
+      to: recipients.map(email => ({ email })),
+      subject: "BOZP certifikát",
+      htmlContent: `<p>Dobrý den,</p><p>v příloze zasíláme certifikát BOZP a PO pro: <strong>${name}</strong>.</p><p>POHAS s.r.o.</p>`,
+      attachment: [
+        { name: "certifikat.pdf", content: Buffer.from(pdfBuffer).toString("base64") }
+      ]
+    }),
+    signal: AbortSignal.timeout(20000)
+  });
+
+  const body = await res.text();
+  if (!res.ok) {
+    throw new Error(`Brevo ${res.status}: ${body}`);
   }
-});
+  console.log("EMAIL OK:", recipients.join(", "), body);
+}
 
 /* ---------------- ROUTES ---------------- */
 
@@ -319,25 +339,26 @@ let browser;
 
     await browser.close();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: [process.env.EMAIL_USER, email, user.companyEmail],
-      subject: "BOZP certifikát",
-      attachments: [
-        {
-          filename: "certifikat.pdf",
-          content: pdfBuffer
-        }
-      ]
-    });
+    browser = null;
+
+    // odstraní prázdné (chybějící env) a duplicitní adresy
+    const recipients = [...new Set(
+      [process.env.EMAIL_USER, email, user.companyEmail].filter(Boolean)
+    )];
+
+    await sendCertificate({ recipients, pdfBuffer, name });
 
     res.send("✅ Certifikát odeslán");
 
   } catch (err) {
     console.error("ERROR:", err);
-    res.status(500).send("Server error");
+    if (browser) await browser.close().catch(() => {});
+    res.status(500).send("Chyba při odesílání: " + err.message);
   }
 });
+
+/* STATIC – až za chráněnými routami, jinak by index.html šel otevřít bez přihlášení */
+app.use(express.static(__dirname, { index: false }));
 
 /* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
