@@ -12,9 +12,9 @@ const report = require("./report");
 
 const app = express();
 
-/* DB pro denní report (env DATABASE_URL) – bez ní server dál posílá certifikáty,
-   jen se nezaznamenávají výsledky pro Excel */
-const pool = report.createPool();
+/* Firestore pro denní report (env FIREBASE_SERVICE_ACCOUNT) – bez něj server dál
+   posílá certifikáty, jen se nezaznamenávají výsledky pro Excel */
+const db = report.createDb();
 
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json());
@@ -377,9 +377,9 @@ let browser;
 
     /* zápis pro denní Excel report – selhání DB nesmí zablokovat odpověď,
        certifikát už byl odeslán */
-    if (pool) {
+    if (db) {
       try {
-        await report.saveResult(pool, {
+        await report.saveResult(db, {
           company,
           name,
           score: scoreNum,
@@ -421,10 +421,19 @@ app.all("/cron/daily-report", async (req, res) => {
     return res.status(401).send("Unauthorized");
   }
 
-  if (!pool) return res.status(503).send("DATABASE_URL není nastaven");
+  if (!db) return res.status(503).send("FIREBASE_SERVICE_ACCOUNT není nastaven");
 
   try {
-    const result = await report.runDailyReport({ pool, users, sendMail });
+    /* ?test=1 → zahrne i dnešní záznamy, pošle jen na EMAIL_USER (ne firmě)
+       a nic neoznačí jako odeslané – bezpečné pro vyzkoušení */
+    const test = req.query.test === "1";
+    const result = await report.runDailyReport({
+      db,
+      users,
+      sendMail,
+      test,
+      testEmail: process.env.EMAIL_USER
+    });
     res.json(result);
   } catch (err) {
     console.error("DAILY REPORT FAILED:", err);
@@ -438,17 +447,8 @@ app.use(express.static(__dirname, { index: false }));
 /* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
 
-(async () => {
-  if (pool) {
-    try {
-      await report.initDb(pool);
-      console.log("DB připravena");
-    } catch (err) {
-      console.error("DB INIT ERROR:", err);
-    }
-  } else {
-    console.warn("DATABASE_URL není nastaven – denní report je vypnutý");
-  }
+if (!db) {
+  console.warn("FIREBASE_SERVICE_ACCOUNT není nastaven – denní report je vypnutý");
+}
 
-  app.listen(PORT, () => console.log("Server běží na portu " + PORT));
-})();
+app.listen(PORT, () => console.log("Server běží na portu " + PORT));
