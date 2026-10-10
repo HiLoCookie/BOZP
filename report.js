@@ -1,15 +1,16 @@
 /* ============================================================
-   DENNÍ REPORT ABSOLVENTŮ (Excel)
-   - ukládá úspěšné testy do Postgresu (env DATABASE_URL)
+   DENNÍ REPORT ABSOLVENTŮ (Excel) – úložiště Firebase Firestore
+   - ukládá úspěšné testy do Firestore (env FIREBASE_SERVICE_ACCOUNT)
    - každé ráno vytvoří pro každou firmu Excel s lidmi, kteří prošli
      a ještě nebyli nahlášeni, a pošle ho na e-mail firmy
    - když nejsou žádné nové záznamy, e-mail se neposílá
    ============================================================ */
 
 const ExcelJS = require("exceljs");
-const { Pool } = require("pg");
+const admin = require("firebase-admin");
 
 const TZ = "Europe/Prague";
+const COLLECTION = "test_results";
 
 /* ---------------- DATUMY (vždy podle pražského času) ---------------- */
 
@@ -30,44 +31,36 @@ function excelDate(isoDate) {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
-/* ---------------- DATABÁZE ---------------- */
+/* ---------------- DATABÁZE (Firestore) ---------------- */
 
-function createPool() {
-  if (!process.env.DATABASE_URL) return null;
+// Vrací Firestore, nebo null, když chybí FIREBASE_SERVICE_ACCOUNT
+// (nebo je nastaven FIRESTORE_EMULATOR_HOST pro lokální testování).
+function createDb() {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+  if (!raw && !emulator) return null;
 
-  return new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Render/Neon/Supabase vyžadují SSL; pro lokální DB nastav DATABASE_SSL=false
-    ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
-    max: 3
+  if (!admin.apps.length) {
+    if (raw) {
+      admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+    } else {
+      admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT || "demo-pohas" });
+    }
+  }
+  return admin.firestore();
+}
+
+async function saveResult(db, { company, name, score, passedAt, expiresAt }) {
+  await db.collection(COLLECTION).add({
+    company,
+    name,
+    score,
+    passedAt,                       // Date -> Firestore Timestamp
+    passedOn: pragueDate(passedAt), // "YYYY-MM-DD"
+    expiresOn: pragueDate(expiresAt),
+    reported: false,
+    reportedAt: null
   });
-}
-
-async function initDb(pool) {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS test_results (
-      id          SERIAL PRIMARY KEY,
-      company     TEXT        NOT NULL,
-      name        TEXT        NOT NULL,
-      score       INTEGER     NOT NULL,
-      passed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-      passed_on   DATE        NOT NULL,
-      expires_on  DATE        NOT NULL,
-      reported_at TIMESTAMPTZ
-    )
-  `);
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS test_results_unreported_idx
-    ON test_results (company, passed_on) WHERE reported_at IS NULL
-  `);
-}
-
-async function saveResult(pool, { company, name, score, passedAt, expiresAt }) {
-  await pool.query(
-    `INSERT INTO test_results (company, name, score, passed_at, passed_on, expires_on)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [company, name, score, passedAt, pragueDate(passedAt), pragueDate(expiresAt)]
-  );
 }
 
 /* ---------------- EXCEL ---------------- */
@@ -82,10 +75,10 @@ async function buildWorkbook(rows) {
   });
 
   ws.columns = [
-    { header: "Č.",                 key: "no",      width: 6 },
-    { header: "Jméno a příjmení",   key: "name",    width: 34 },
-    { header: "Skóre (max. 8)",     key: "score",   width: 16 },
-    { header: "Datum absolvování",  key: "passedOn", width: 20, style: { numFmt: "dd.mm.yyyy" } },
+    { header: "Č.",                 key: "no",        width: 6 },
+    { header: "Jméno a příjmení",   key: "name",      width: 34 },
+    { header: "Skóre (max. 8)",     key: "score",     width: 16 },
+    { header: "Datum absolvování",  key: "passedOn",  width: 20, style: { numFmt: "dd.mm.yyyy" } },
     { header: "Platnost do",        key: "expiresOn", width: 16, style: { numFmt: "dd.mm.yyyy" } }
   ];
 
@@ -117,36 +110,48 @@ async function buildWorkbook(rows) {
 /* ---------------- DENNÍ JOB ----------------
 
    Do reportu patří záznamy, které
-     - ještě nebyly nahlášeny (reported_at IS NULL),
+     - ještě nebyly nahlášeny (reported == false),
      - vznikly před dneškem (tedy včera, případně dříve, pokud
        by některý běh vypadl),
      - mají stále platný certifikát.
-   Po úspěšném odeslání se označí reported_at, takže každý člověk
+   Po úspěšném odeslání se označí reported = true, takže každý člověk
    přijde do reportu právě jednou. Když firma nemá nové záznamy,
    nic se neposílá.
+
+   TESTOVACÍ REŽIM (test = true):
+     - zahrne i dnešní záznamy,
+     - pošle e-mail jen na testEmail (ne firmě), předmět má prefix [TEST],
+     - nic neoznačí jako nahlášené (ostrý report pak proběhne normálně).
 --------------------------------------------- */
 
 let running = false;
 
-async function runDailyReport({ pool, users, sendMail, now = new Date() }) {
+async function runDailyReport({ db, users, sendMail, now = new Date(), test = false, testEmail }) {
   if (running) return { skipped: "already running" };
   running = true;
 
   try {
     const today = pragueDate(now);
 
-    const { rows } = await pool.query(
-      `SELECT id, company, name, score,
-              passed_at,
-              passed_on::text  AS passed_on,
-              expires_on::text AS expires_on
-       FROM test_results
-       WHERE reported_at IS NULL
-         AND passed_on < $1::date
-         AND expires_on >= $1::date
-       ORDER BY company, passed_at`,
-      [today]
-    );
+    // jediný filtr v dotazu = žádný složený index není potřeba;
+    // data a platnost se filtrují v kódu (nenahlášených záznamů je vždy málo)
+    const snap = await db.collection(COLLECTION).where("reported", "==", false).get();
+
+    const rows = snap.docs
+      .map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          company: d.company,
+          name: d.name,
+          score: d.score,
+          passed_on: d.passedOn,
+          expires_on: d.expiresOn,
+          passedAtMs: d.passedAt?.toMillis ? d.passedAt.toMillis() : new Date(d.passedAt).getTime()
+        };
+      })
+      .filter(r => (test ? r.passed_on <= today : r.passed_on < today) && r.expires_on >= today)
+      .sort((a, b) => a.company.localeCompare(b.company) || a.passedAtMs - b.passedAtMs);
 
     if (rows.length === 0) {
       console.log("DAILY REPORT: žádné nové záznamy, e-mail se neposílá");
@@ -161,7 +166,7 @@ async function runDailyReport({ pool, users, sendMail, now = new Date() }) {
 
     for (const [key, list] of Object.entries(byCompany)) {
       const user = users[key];
-      const to = user?.companyEmail;
+      const to = test ? testEmail : user?.companyEmail;
 
       if (!user || key === "admin" || !to) {
         console.warn(`DAILY REPORT: firma "${key}" nemá nastavený e-mail, ${list.length} záznamů zůstává k odeslání`);
@@ -171,15 +176,16 @@ async function runDailyReport({ pool, users, sendMail, now = new Date() }) {
 
       try {
         const first = list[0].passed_on;
-        const last = list[list.length - 1].passed_on;
+        const last = list.reduce((max, r) => (r.passed_on > max ? r.passed_on : max), first);
         const period = first === last ? formatCz(first) : `${formatCz(first)} – ${formatCz(last)}`;
 
         const xlsx = await buildWorkbook(list);
 
         await sendMail({
           to: [to],
-          subject: `BOZP a PO – přehled absolventů za ${period} (${list.length})`,
+          subject: `${test ? "[TEST] " : ""}BOZP a PO – přehled absolventů za ${period} (${list.length})`,
           html:
+            (test ? `<p><strong>TESTOVACÍ E-MAIL</strong> – určeno pouze pro kontrolu, firma ho nedostala.</p>` : "") +
             `<p>Dobrý den,</p>` +
             `<p>v příloze zasíláme přehled osob, které úspěšně absolvovaly školení a test BOZP a PO ` +
             `(${user.companyName}, období: <strong>${period}</strong>, celkem <strong>${list.length}</strong>).</p>` +
@@ -193,13 +199,21 @@ async function runDailyReport({ pool, users, sendMail, now = new Date() }) {
         });
 
         // označíme až po úspěšném odeslání – při chybě se zkusí příště
-        await pool.query(
-          `UPDATE test_results SET reported_at = now() WHERE id = ANY($1::int[])`,
-          [list.map(r => r.id)]
-        );
+        if (!test) {
+          for (let i = 0; i < list.length; i += 400) {
+            const batch = db.batch();
+            for (const r of list.slice(i, i + 400)) {
+              batch.update(db.collection(COLLECTION).doc(r.id), {
+                reported: true,
+                reportedAt: new Date()
+              });
+            }
+            await batch.commit();
+          }
+        }
 
-        sent.push({ company: key, to, count: list.length });
-        console.log(`DAILY REPORT OK: ${key} -> ${to} (${list.length})`);
+        sent.push({ company: key, to, count: list.length, test });
+        console.log(`DAILY REPORT OK${test ? " (TEST)" : ""}: ${key} -> ${to} (${list.length})`);
       } catch (err) {
         console.error(`DAILY REPORT ERROR (${key}):`, err);
         failed.push({ company: key, reason: err.message });
@@ -213,8 +227,7 @@ async function runDailyReport({ pool, users, sendMail, now = new Date() }) {
 }
 
 module.exports = {
-  createPool,
-  initDb,
+  createDb,
   saveResult,
   buildWorkbook,
   runDailyReport,
