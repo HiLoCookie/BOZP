@@ -7,7 +7,8 @@
    ============================================================ */
 
 const ExcelJS = require("exceljs");
-const admin = require("firebase-admin");
+const { initializeApp, cert, getApps } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const TZ = "Europe/Prague";
 const COLLECTION = "test_results";
@@ -40,14 +41,14 @@ function createDb() {
   const emulator = process.env.FIRESTORE_EMULATOR_HOST;
   if (!raw && !emulator) return null;
 
-  if (!admin.apps.length) {
+  if (!getApps().length) {
     if (raw) {
-      admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+      initializeApp({ credential: cert(JSON.parse(raw)) });
     } else {
-      admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT || "demo-pohas" });
+      initializeApp({ projectId: process.env.GCLOUD_PROJECT || "demo-pohas" });
     }
   }
-  return admin.firestore();
+  return getFirestore();
 }
 
 async function saveResult(db, { company, name, score, passedAt, expiresAt }) {
