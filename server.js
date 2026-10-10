@@ -2,12 +2,19 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const session = require("express-session");
 
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
+const report = require("./report");
+
 const app = express();
+
+/* DB pro denní report (env DATABASE_URL) – bez ní server dál posílá certifikáty,
+   jen se nezaznamenávají výsledky pro Excel */
+const pool = report.createPool();
 
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json());
@@ -60,7 +67,7 @@ const users = {
    nefunguje. E-maily se posílají přes HTTPS API služby Brevo.
    Env proměnné: BREVO_API_KEY, EMAIL_USER (ověřený odesílatel v Brevo)
 ---------------------------------------- */
-async function sendCertificate({ recipients, pdfBuffer, name }) {
+async function sendMail({ to, subject, html, attachments }) {
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
@@ -70,12 +77,10 @@ async function sendCertificate({ recipients, pdfBuffer, name }) {
     },
     body: JSON.stringify({
       sender: { email: process.env.EMAIL_USER, name: "POHAS s.r.o. – BOZP" },
-      to: recipients.map(email => ({ email })),
-      subject: "BOZP certifikát",
-      htmlContent: `<p>Dobrý den,</p><p>v příloze zasíláme certifikát BOZP a PO pro: <strong>${name}</strong>.</p><p>POHAS s.r.o.</p>`,
-      attachment: [
-        { name: "certifikat.pdf", content: Buffer.from(pdfBuffer).toString("base64") }
-      ]
+      to: to.map(email => ({ email })),
+      subject,
+      htmlContent: html,
+      attachment: attachments
     }),
     signal: AbortSignal.timeout(20000)
   });
@@ -84,7 +89,19 @@ async function sendCertificate({ recipients, pdfBuffer, name }) {
   if (!res.ok) {
     throw new Error(`Brevo ${res.status}: ${body}`);
   }
-  console.log("EMAIL OK:", recipients.join(", "), body);
+  console.log("EMAIL OK:", to.join(", "), body);
+}
+
+/* certifikát (PDF) – posílá se testovanému, organizátorovi (POHAS) i firmě */
+function sendCertificate({ recipients, pdfBuffer, name }) {
+  return sendMail({
+    to: recipients,
+    subject: "BOZP certifikát",
+    html: `<p>Dobrý den,</p><p>v příloze zasíláme certifikát BOZP a PO pro: <strong>${name}</strong>.</p><p>POHAS s.r.o.</p>`,
+    attachments: [
+      { name: "certifikat.pdf", content: Buffer.from(pdfBuffer).toString("base64") }
+    ]
+  });
 }
 
 /* ---------------- ROUTES ---------------- */
@@ -163,8 +180,18 @@ app.post("/submit", async (req, res) => {
     return res.status(400).send("Neznámá firma");
   }
 
-  if (!passed) {
+  /* skóre ověřujeme na serveru, ne podle příznaku "passed" z prohlížeče */
+  const scoreNum = Number(score);
+  if (!Number.isInteger(scoreNum) || scoreNum < 0 || scoreNum > 8) {
+    return res.status(400).send("Neplatné skóre");
+  }
+
+  if (scoreNum < 6 || !passed) {
     return res.send("Test neprošel ❌");
+  }
+
+  if (typeof name !== "string" || !name.trim()) {
+    return res.status(400).send("Chybí jméno");
   }
 
   const today = new Date();
@@ -289,7 +316,7 @@ app.post("/submit", async (req, res) => {
 
     <div class="info">
       Firma: <strong>${safeCompany}</strong><br>
-      Skóre: <strong>${score}/8</strong>
+      Skóre: <strong>${scoreNum}/8</strong>
     </div>
 
     <!-- LOGO -->
@@ -307,12 +334,12 @@ app.post("/submit", async (req, res) => {
     <!-- DATA -->
     <div class="date-left">
       Datum absolvování:<br>
-      <strong>${today.toLocaleDateString("cs-CZ")}</strong>
+      <strong>${today.toLocaleDateString("cs-CZ", { timeZone: "Europe/Prague" })}</strong>
     </div>
 
     <div class="date-right">
       Platnost do:<br>
-      <strong>${expiry.toLocaleDateString("cs-CZ")}</strong>
+      <strong>${expiry.toLocaleDateString("cs-CZ", { timeZone: "Europe/Prague" })}</strong>
     </div>
 
   </div>
@@ -348,6 +375,22 @@ let browser;
 
     await sendCertificate({ recipients, pdfBuffer, name });
 
+    /* zápis pro denní Excel report – selhání DB nesmí zablokovat odpověď,
+       certifikát už byl odeslán */
+    if (pool) {
+      try {
+        await report.saveResult(pool, {
+          company,
+          name,
+          score: scoreNum,
+          passedAt: today,
+          expiresAt: expiry
+        });
+      } catch (dbErr) {
+        console.error("DB SAVE ERROR (záznam nebude v denním reportu):", name, dbErr);
+      }
+    }
+
     res.send("✅ Certifikát odeslán");
 
   } catch (err) {
@@ -357,9 +400,55 @@ let browser;
   }
 });
 
+/* ---------------- DENNÍ REPORT ----------------
+   Volá externí cron (např. cron-job.org) každé ráno v 8:00 pražského času.
+   Zabezpečeno tajným klíčem CRON_SECRET (hlavička Authorization: Bearer <klíč>,
+   případně ?key=<klíč>). Může se volat i opakovaně – nic se neodešle dvakrát. */
+function safeEqual(a, b) {
+  const ha = crypto.createHash("sha256").update(String(a)).digest();
+  const hb = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+app.all("/cron/daily-report", async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return res.status(503).send("CRON_SECRET není nastaven");
+
+  const bearer = (req.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const provided = bearer || req.query.key || "";
+
+  if (!provided || !safeEqual(provided, secret)) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  if (!pool) return res.status(503).send("DATABASE_URL není nastaven");
+
+  try {
+    const result = await report.runDailyReport({ pool, users, sendMail });
+    res.json(result);
+  } catch (err) {
+    console.error("DAILY REPORT FAILED:", err);
+    res.status(500).send("Chyba reportu: " + err.message);
+  }
+});
+
 /* STATIC – až za chráněnými routami, jinak by index.html šel otevřít bez přihlášení */
 app.use(express.static(__dirname, { index: false }));
 
 /* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server běží na portu " + PORT));
+
+(async () => {
+  if (pool) {
+    try {
+      await report.initDb(pool);
+      console.log("DB připravena");
+    } catch (err) {
+      console.error("DB INIT ERROR:", err);
+    }
+  } else {
+    console.warn("DATABASE_URL není nastaven – denní report je vypnutý");
+  }
+
+  app.listen(PORT, () => console.log("Server běží na portu " + PORT));
+})();
