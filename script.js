@@ -128,6 +128,15 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
   }
 
   /* ---------------- SEND ---------------- */
+  // tlačítko se při odesílání zamkne, aby nešlo odeslat dvakrát (dvojklik, pomalá odezva)
+  const submitBtn = document.querySelector('#testForm button[type="submit"]');
+  const submitLabel = submitBtn ? submitBtn.textContent : "";
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Odesílám…";
+  }
+  let keepLocked = false;
+
   try {
     const res = await fetch("/submit", {
       method: "POST",
@@ -153,10 +162,22 @@ document.getElementById("testForm").addEventListener("submit", async (e) => {
       return;
     }
 
+    // po odeslaném certifikátu zůstane tlačítko zamčené; při neúspěšném testu se odemkne
+    keepLocked = /odesl/i.test(text);
+
     alert("✅ Hotovo: " + text);
 
   } catch (err) {
     console.error("❌ FETCH ERROR:", err);
     alert("Nepodařilo se odeslat formulář");
+  } finally {
+    if (submitBtn) {
+      if (keepLocked) {
+        submitBtn.textContent = "Odesláno";
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
+      }
+    }
   }
 });

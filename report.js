@@ -127,7 +127,7 @@ async function buildWorkbook(rows) {
 
 let running = false;
 
-async function runDailyReport({ db, users, sendMail, now = new Date(), test = false, testEmail }) {
+async function runDailyReport({ db, users, sendMail, now = new Date(), test = false, testEmail, quiet = false }) {
   if (running) return { skipped: "already running" };
   running = true;
 
@@ -155,7 +155,7 @@ async function runDailyReport({ db, users, sendMail, now = new Date(), test = fa
       .sort((a, b) => a.company.localeCompare(b.company) || a.passedAtMs - b.passedAtMs);
 
     if (rows.length === 0) {
-      console.log("DAILY REPORT: žádné nové záznamy, e-mail se neposílá");
+      if (!quiet) console.log("DAILY REPORT: žádné nové záznamy, e-mail se neposílá");
       return { sent: [], skipped: "no new entries" };
     }
 

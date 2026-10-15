@@ -82,7 +82,7 @@ async function sendMail({ to, subject, html, attachments }) {
       htmlContent: html,
       attachment: attachments
     }),
-    signal: AbortSignal.timeout(20000)
+    signal: AbortSignal.timeout(45000)
   });
 
   const body = await res.text();
@@ -105,6 +105,13 @@ function sendCertificate({ recipients, pdfBuffer, name }) {
 }
 
 /* ---------------- ROUTES ---------------- */
+
+/* evidence nedávných odeslání (ochrana proti duplicitním certifikátům) */
+const recentSubmits = new Map();
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
+
+// probuzení Renderu (bez přihlášení, nevrací žádná data)
+app.get("/healthz", (req, res) => res.send("ok"));
 
 // root redirect
 app.get("/", (req, res) => {
@@ -193,6 +200,18 @@ app.post("/submit", async (req, res) => {
   if (typeof name !== "string" || !name.trim()) {
     return res.status(400).send("Chybí jméno");
   }
+
+  /* ochrana proti dvojímu odeslání (dvojklik, opakované odeslání při pomalé odezvě):
+     stejný člověk + e-mail + firma se v okně 10 minut zpracuje jen jednou */
+  const now = Date.now();
+  for (const [k, t] of recentSubmits) {
+    if (now - t > DUPLICATE_WINDOW_MS) recentSubmits.delete(k);
+  }
+  const dedupeKey = [company, String(email || "").trim().toLowerCase(), name.trim().toLowerCase()].join("|");
+  if (recentSubmits.has(dedupeKey)) {
+    return res.send("✅ Certifikát už byl odeslán – zkontrolujte e-mail (i spam), neodesílejte znovu");
+  }
+  recentSubmits.set(dedupeKey, now);
 
   const today = new Date();
   const expiry = new Date();
@@ -368,9 +387,12 @@ let browser;
 
     browser = null;
 
-    // odstraní prázdné (chybějící env) a duplicitní adresy
+    // certifikát dostane jen absolvent a POHAS (EMAIL_USER); firma dostává
+    // pouze denní tabulku. Prázdné a duplicitní adresy (bez ohledu na velikost písmen) se vypustí.
     const recipients = [...new Set(
-      [process.env.EMAIL_USER, email, user.companyEmail].filter(Boolean)
+      [process.env.EMAIL_USER, email]
+        .filter(Boolean)
+        .map(a => String(a).trim().toLowerCase())
     )];
 
     await sendCertificate({ recipients, pdfBuffer, name });
@@ -395,6 +417,7 @@ let browser;
 
   } catch (err) {
     console.error("ERROR:", err);
+    recentSubmits.delete(dedupeKey); // při chybě musí jít odeslat znovu
     if (browser) await browser.close().catch(() => {});
     res.status(500).send("Chyba při odesílání: " + err.message);
   }
@@ -452,3 +475,26 @@ if (!db) {
 }
 
 app.listen(PORT, () => console.log("Server běží na portu " + PORT));
+
+/* Pojistka denního reportu: Render po nečinnosti usíná, takže ranní volání z cronu
+   se může minout. Jakmile je server vzhůru a je po 8:00 (pražského času), odešle se
+   report, který ještě nebyl odeslán. Je idempotentní – nic se neodešle dvakrát. */
+function pragueHour() {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Prague", hour: "numeric", hourCycle: "h23" }).format(new Date())
+  );
+}
+
+async function catchUpReport() {
+  if (!db || pragueHour() < 8) return;
+  try {
+    await report.runDailyReport({ db, users, sendMail, quiet: true });
+  } catch (err) {
+    console.error("CATCH-UP REPORT ERROR:", err);
+  }
+}
+
+if (db) {
+  setTimeout(catchUpReport, 15 * 1000);
+  setInterval(catchUpReport, 10 * 60 * 1000);
+}
